@@ -6,7 +6,6 @@ from io import BytesIO
 from flask import Flask, render_template, request, jsonify
 from flask_cloudflared import _run_cloudflared  # Библиотека для туннеля
 from diffusers import StableDiffusionXLPipeline, EulerAncestralDiscreteScheduler
-
 app = Flask(__name__)
 
 # --- Настройки модели (без изменений) ---
