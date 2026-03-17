@@ -1,125 +1,92 @@
 import os
-import datetime
 import torch
-from flask import Flask, render_template, request, jsonify, url_for
-from werkzeug.utils import secure_filename
+import base64
+import datetime
+from io import BytesIO
+from flask import Flask, render_template, request, jsonify
 from diffusers import StableDiffusionXLPipeline, EulerAncestralDiscreteScheduler
 
-# --- НАСТРОЙКИ ---
-IMAGE_FOLDER = 'images'
-ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'}
-MODEL_FILENAME = "HassakuXL_Illustrious.safetensors"
-
 app = Flask(__name__)
-app.static_folder = 'static'
 
-# Создаем папки
-static_img_dir = os.path.join(app.static_folder, IMAGE_FOLDER)
-os.makedirs(static_img_dir, exist_ok=True)
+# --- Настройки модели ---
+MODEL_FILENAME = "HassakuXL_Illustrious.safetensors"
+# Базовый негативный промпт для качества
+DEFAULT_NEGATIVE = "low quality, worst quality, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, jpeg artifacts, signature, watermark, username, blurry, artist name"
 
-# --- ИНИЦИАЛИЗАЦИЯ НЕЙРОСЕТИ ---
-print("🚀 Загрузка нейросети (это может занять время)...")
-device = "cuda" if torch.cuda.is_available() else "cpu"
+pipe = None
 
+def load_model():
+    global pipe
+    if pipe is None:
+        print("🚀 Инициализация Hassaku XL в GPU...")
+        pipe = StableDiffusionXLPipeline.from_single_file(
+            MODEL_FILENAME,
+            torch_dtype=torch.float16,
+            use_safetensors=True,
+            variant="fp16"
+        )
+        pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
+        pipe.to("cuda")
+        print("✅ Модель готова к работе!")
+
+# Пробуем загрузить модель сразу
 try:
-    # Загружаем модель (убедитесь, что файл лежит в папке с проектом)
-    pipe = StableDiffusionXLPipeline.from_single_file(
-        MODEL_FILENAME,
-        torch_dtype=torch.float16 if device == "cuda" else torch.float32,
-        use_safetensors=True
-    )
-    pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
-    pipe.to(device)
-    print(f"✅ Модель загружена на {device}")
+    load_model()
 except Exception as e:
-    print(f"❌ Ошибка загрузки модели: {e}")
-    pipe = None
-
-def allowed_file(filename):
-    return os.path.splitext(filename)[1].lower() in ALLOWED_EXTENSIONS
+    print(f"❌ Ошибка загрузки: {e}. Убедитесь, что файл {MODEL_FILENAME} на месте.")
 
 @app.route('/')
-def gallery():
-    image_dir = os.path.join(app.static_folder, IMAGE_FOLDER)
-    search_query = request.args.get('q', '').strip().lower()
-    sort_by = request.args.get('sort', 'date_desc')
-    images = []
-    
-    if os.path.exists(image_dir):
-        files = os.listdir(image_dir)
-        for f in files:
-            filepath = os.path.join(image_dir, f)
-            if os.path.isfile(filepath) and allowed_file(f):
-                if search_query and search_query not in f.lower(): continue
-                stats = os.stat(filepath)
-                images.append({
-                    'name': f,
-                    'url': f"{IMAGE_FOLDER}/{f}",
-                    'size': f"{stats.st_size / 1024:.1f} KB",
-                    'date': datetime.datetime.fromtimestamp(stats.st_mtime).strftime("%d.%m.%Y %H:%M"),
-                    'timestamp': stats.st_mtime
-                })
-
-    if sort_by == 'date_desc': images.sort(key=lambda x: x['timestamp'], reverse=True)
-    elif sort_by == 'date_asc': images.sort(key=lambda x: x['timestamp'])
-    elif sort_by == 'name': images.sort(key=lambda x: x['name'])
-
-    return render_template('index.html', images=images, search_query=search_query, sort_by=sort_by)
-
-@app.route('/generator')
-def generator_page():
+def index():
     return render_template('generator.html')
 
 @app.route('/generate', methods=['POST'])
-def generate_art():
+def generate():
     if pipe is None:
-        return jsonify({'success': False, 'error': 'Модель не загружена'}), 500
+        return jsonify({'success': False, 'error': 'Модель не загружена'})
 
     data = request.json
-    prompt = data.get('prompt', '')
-    style = data.get('style', 'Реализм')
+    user_prompt = data.get('prompt', '').strip()
     ratio = data.get('ratio', '1:1')
+    style = data.get('style', 'Anime')
 
-    if not prompt:
-        return jsonify({'success': False, 'error': 'Промпт пустой'}), 400
+    if not user_prompt:
+        return jsonify({'success': False, 'error': 'Промпт пустой'})
 
-    # Настройка размеров
-    dims = {"1:1": (1024, 1024), "16:9": (1216, 640), "9:16": (640, 1216)}
-    width, height = dims.get(ratio, (1024, 1024))
-
-    # Стилизация промпта
-    styles_map = {
-        "Аниме": "masterpiece, best quality, anime style, highres, illustrious",
-        "3D Рендер": "masterpiece, best quality, unreal engine 5, octane render, 4k",
-        "Масло": "oil painting, textured brush strokes, masterpiece",
-        "Реализм": "photorealistic, ultra highres, sharp focus, 8k"
+    # Настройка размеров на основе вашего кода (SDXL любит большие разрешения)
+    dimensions = {
+        "1:1": (1024, 1024),
+        "16:9": (1216, 680),
+        "9:16": (832, 1216) # Как в вашем коде Colab
     }
-    full_prompt = f"{styles_map.get(style, '')}, {prompt}"
-    negative_prompt = "low quality, worst quality, bad anatomy, bad hands, text, error, blurry"
+    width, height = dimensions.get(ratio, (832, 1216))
+
+    # Формируем полный промпт
+    full_prompt = f"masterpiece, best quality, {style}, {user_prompt}"
 
     try:
-        image = pipe(
-            prompt=full_prompt,
-            negative_prompt=negative_prompt,
-            num_inference_steps=28,
-            guidance_scale=7.0,
-            width=width,
-            height=height
-        ).images[0]
+        # Генерация (логика из вашего Colab)
+        with torch.inference_mode():
+            image = pipe(
+                prompt=full_prompt,
+                negative_prompt=DEFAULT_NEGATIVE,
+                num_inference_steps=28,
+                guidance_scale=7.0,
+                width=width,
+                height=height
+            ).images[0]
 
-        # Сохранение
-        filename = f"gen_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-        file_path = os.path.join(app.static_folder, IMAGE_FOLDER, filename)
-        image.save(file_path)
+        # Конвертируем в Base64, чтобы отправить сразу на страницу без сохранения мусора на диске
+        buffered = BytesIO()
+        image.save(buffered, format="PNG")
+        img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+        
+        return jsonify({
+            'success': True, 
+            'url': f"data:image/png;base64,{img_base64}"
+        })
 
-        return jsonify({'success': True, 'url': url_for('static', filename=f"{IMAGE_FOLDER}/{filename}")})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/upload', methods=['POST'])
-def upload_image():
-    # ... (код загрузки из вашего исходника остается без изменений)
-    pass
+        return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
-    app.run(debug=False, host='127.0.0.1', port=5000) # debug=False лучше для GPU
+    app.run(host='0.0.0.0', port=5000, debug=False)
