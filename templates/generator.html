@@ -3,120 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Генерация | Dark Mode Gal1eryAI</title>
-    
+    <title>Hassaku XL Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-[#0b0f1a] text-gray-100 font-sans min-h-screen flex flex-col">
+<body class="bg-[#0b0f1a] text-gray-100 min-h-screen">
 
-    <header class="w-full p-4 border-b border-gray-800 bg-[#0f172a] shadow-lg mb-4">
-        <div class="max-w-7xl mx-auto flex justify-between items-center px-4">
-            <h1 class="text-xl font-bold bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">
-                Gal1eryAIGenerator
-            </h1>
-            <a href="/" class="text-gray-400 hover:text-purple-400 font-medium transition-colors">← На главную</a>
-        </div>
-    </header>
-
-    <main class="flex-grow flex flex-col lg:flex-row max-w-7xl mx-auto w-full p-4 gap-6">
-        
+    <main class="max-w-6xl mx-auto p-6 flex flex-col lg:flex-row gap-8">
         <div class="w-full lg:w-1/3 space-y-6">
-            <div class="bg-[#161b2c] p-6 rounded-2xl shadow-2xl border border-gray-800 h-full">
+            <h1 class="text-3xl font-black bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">Hassaku XL</h1>
+            
+            <div class="bg-[#161b2c] p-6 rounded-2xl border border-gray-800 shadow-xl">
+                <label class="block text-sm text-gray-400 mb-2">Введите промпт:</label>
+                <textarea id="promptInput" class="w-full h-32 p-3 bg-[#0f172a] border border-gray-700 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all" placeholder="girl in forest, cinematic lighting..."></textarea>
                 
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-400 mb-2">Промпт (на английском)</label>
-                    <textarea id="promptInput" class="w-full h-32 p-3 bg-[#0f172a] border border-gray-700 text-white rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent focus:outline-none resize-none transition-all placeholder-gray-600" placeholder="Например: futuristic city in neon lights, cyberpunk..."></textarea>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="grid grid-cols-2 gap-4 mt-4">
                     <div>
-                        <label class="block text-xs font-bold uppercase text-gray-500 mb-2">Соотношение</label>
-                        <select id="ratioSelect" class="w-full p-2 bg-[#0f172a] border border-gray-700 text-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none">
-                            <option value="1:1">1:1 (Квадрат)</option>
-                            <option value="16:9">16:9 (Альбом)</option>
-                            <option value="9:16">9:16 (Портрет)</option>
+                        <label class="block text-xs text-gray-500 mb-1">Формат</label>
+                        <select id="ratioSelect" class="w-full p-2 bg-[#0f172a] border border-gray-700 rounded-lg text-sm">
+                            <option value="9:16">Портрет (9:16)</option>
+                            <option value="1:1">Квадрат (1:1)</option>
+                            <option value="16:9">Альбом (16:9)</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold uppercase text-gray-500 mb-2">Стиль</label>
-                        <select id="styleSelect" class="w-full p-2 bg-[#0f172a] border border-gray-700 text-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none">
-                            <option>Реализм</option>
-                            <option>Аниме</option>
-                            <option>3D Рендер</option>
-                            <option>Масло</option>
+                        <label class="block text-xs text-gray-500 mb-1">Стиль</label>
+                        <select id="styleSelect" class="w-full p-2 bg-[#0f172a] border border-gray-700 rounded-lg text-sm">
+                            <option value="anime style">Аниме</option>
+                            <option value="photorealistic">Реализм</option>
+                            <option value="digital illustration">Иллюстрация</option>
                         </select>
                     </div>
                 </div>
 
-                <button id="generateBtn" class="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(124,58,237,0.3)] transition-all flex items-center justify-center gap-2 group active:scale-[0.98]">
-                    <span id="btnText">Генерировать</span>
-                    <div id="loader" class="hidden w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                <button id="generateBtn" class="w-full mt-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl font-bold hover:brightness-110 transition-all flex items-center justify-center gap-3">
+                    <span id="btnText">Сгенерировать</span>
+                    <div id="loader" class="hidden w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
                 </button>
             </div>
         </div>
 
         <div class="w-full lg:w-2/3">
-            <div id="resultContainer" class="bg-[#0f172a] border-2 border-dashed border-gray-700 rounded-2xl h-[600px] flex items-center justify-center relative overflow-hidden shadow-inner">
-                
-                <div id="placeholder" class="text-center opacity-30">
-                    <svg class="w-24 h-24 mx-auto mb-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                    <p class="text-lg text-gray-400 font-medium">Ваш шедевр появится здесь</p>
+            <div id="resultBox" class="bg-[#0f172a] border-2 border-dashed border-gray-800 rounded-3xl h-[700px] flex items-center justify-center relative overflow-hidden shadow-2xl">
+                <div id="placeholder" class="text-center text-gray-600">
+                    <p class="text-5xl mb-4">🎨</p>
+                    <p>Здесь появится результат генерации</p>
                 </div>
-                
-                <img id="generatedImage" class="hidden max-w-full max-h-full object-contain transition-opacity duration-700 shadow-[0_0_50px_rgba(0,0,0,0.5)]" src="" alt="Generated Art">
+                <img id="resImg" class="hidden max-w-full max-h-full object-contain" src="" alt="AI Result">
             </div>
         </div>
     </main>
 
     <script>
-        const generateBtn = document.getElementById('generateBtn');
-        const promptInput = document.getElementById('promptInput');
-        const ratioSelect = document.getElementById('ratioSelect');
-        const styleSelect = document.getElementById('styleSelect');
-        const resultContainer = document.getElementById('resultContainer');
-        const placeholder = document.getElementById('placeholder');
-        const generatedImage = document.getElementById('generatedImage');
+        const btn = document.getElementById('generateBtn');
         const loader = document.getElementById('loader');
         const btnText = document.getElementById('btnText');
+        const resImg = document.getElementById('resImg');
+        const placeholder = document.getElementById('placeholder');
 
-        generateBtn.addEventListener('click', async () => {
-            const prompt = promptInput.value.trim();
-            if (!prompt) return alert('Введите промпт!');
+        btn.addEventListener('click', async () => {
+            const prompt = document.getElementById('promptInput').value;
+            if(!prompt) return alert('Введите текст!');
 
-            generateBtn.disabled = true;
+            // Блокировка UI
+            btn.disabled = true;
             loader.classList.remove('hidden');
-            btnText.textContent = 'Создаем магию...';
-            placeholder.classList.add('hidden');
-            generatedImage.classList.add('opacity-0');
+            btnText.textContent = 'Генерация...';
 
             try {
                 const response = await fetch('/generate', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         prompt: prompt,
-                        ratio: ratioSelect.value,
-                        style: styleSelect.value
+                        ratio: document.getElementById('ratioSelect').value,
+                        style: document.getElementById('styleSelect').value
                     })
                 });
 
                 const data = await response.json();
 
-                if (data.success) {
-                    generatedImage.src = data.url;
-                    generatedImage.classList.remove('hidden');
-                    setTimeout(() => generatedImage.classList.remove('opacity-0'), 50);
+                if(data.success) {
+                    resImg.src = data.url;
+                    resImg.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
                 } else {
                     alert('Ошибка: ' + data.error);
-                    placeholder.classList.remove('hidden');
                 }
-            } catch (err) {
-                alert('Ошибка сети');
-                placeholder.classList.remove('hidden');
+            } catch (e) {
+                alert('Ошибка связи с сервером');
             } finally {
-                generateBtn.disabled = false;
+                btn.disabled = false;
                 loader.classList.add('hidden');
-                btnText.textContent = 'Генерировать';
+                btnText.textContent = 'Сгенерировать';
             }
         });
     </script>
