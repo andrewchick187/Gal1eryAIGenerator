@@ -69,7 +69,11 @@ def generate():
 
 # --- Блок запуска туннеля и Flask ---
 if __name__ == '__main__':
-    print("🌍 Запуск туннеля Cloudflare...")
-    # Эта функция автоматически запустит cloudflared и выведет ссылку в консоль
-    _run_cloudflared(5000) 
-    app.run(host='0.0.0.0', port=5000)
+    from flask_cloudflared import run_with_cloudflared
+    
+    print("🌍 Запуск туннеля и сервера...")
+    # Используем официальный метод расширения Flask-объекта
+    run_with_cloudflared(app) 
+    
+    # Запускаем на 127.0.0.1, чтобы туннель гарантированно "увидел" локальный процесс
+    app.run()
