@@ -24,97 +24,126 @@
         }
     </script>
     <style>
-        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
-        .dark ::-webkit-scrollbar-thumb { background-color: #374151; }
+        ::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 20px; }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+        }
+        .dark .glass-panel {
+            background: rgba(17, 24, 39, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .bg-gradient-animate {
+            background: linear-gradient(-45deg, #f3e8ff, #e0e7ff, #fce7f3, #fae8ff);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        .dark .bg-gradient-animate {
+            background: linear-gradient(-45deg, #1e1b4b, #0f172a, #2e1065, #171717);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors duration-300 min-h-screen flex flex-col">
+<body class="bg-gradient-animate text-gray-900 dark:text-gray-100 transition-colors duration-500 min-h-screen flex flex-col">
 
-    <header class="sticky top-0 z-40 w-full backdrop-blur-md bg-white/70 dark:bg-gray-900/70 border-b border-gray-200 dark:border-gray-800 transition-colors">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16 gap-4">
-                <a href="/" class="flex-shrink-0 font-semibold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-500 transition">AI Gallery</a>
+    <header class="glass-panel sticky top-0 z-40 border-b-0 border-t-0 border-l-0 border-r-0 border-b-white/20 dark:border-b-white/10">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-500 tracking-tight">
+                Vision AI
+            </h1>
 
-                <div class="flex items-center gap-2 ml-auto">
-                    <button id="theme-toggle" class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors">
-                        <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
-                        <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 011.414-1.414zM2 10a1 1 0 011-1h1a1 1 0 110 2H3a1 1 0 01-1-1zm4.95-4.646l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zm-5.9 9.9l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 011.414-1.414zM10 15a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
-                    </button>
-                    <a href="/generator" class="flex items-center justify-center px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium transition-colors shadow-lg shadow-purple-500/30 gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        Создать
-                    </a>
-                </div>
+            <div class="flex items-center gap-4">
+                <button id="theme-toggle" class="p-2.5 rounded-full bg-white/50 dark:bg-black/30 text-gray-600 dark:text-gray-300 hover:scale-105 backdrop-blur-md transition-all">
+                    <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                    <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 011.414-1.414zM2 10a1 1 0 011-1h1a1 1 0 110 2H3a1 1 0 01-1-1zm4.95-4.646l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zm-5.9 9.9l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 011.414-1.414zM10 15a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
+                </button>
+                <a href="/generator" class="flex items-center justify-center px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold transition-all shadow-lg hover:shadow-purple-500/40 hover:-translate-y-0.5 gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Новый Арт
+                </a>
             </div>
         </div>
     </header>
 
-    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
+    <main class="flex-grow max-w-7xl mx-auto px-6 py-10 w-full">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for img in images %}
             <div 
-                class="group relative aspect-square bg-gray-200 dark:bg-gray-800 rounded-xl overflow-hidden cursor-zoom-in shadow-sm hover:shadow-xl transition-all duration-300 ring-1 ring-black/5 dark:ring-white/10"
+                class="group relative aspect-[3/4] glass-panel rounded-3xl overflow-hidden cursor-zoom-in hover:shadow-2xl hover:shadow-purple-500/20 transition-all duration-500 transform hover:-translate-y-1"
                 onclick="openModal({{ loop.index0 }})"
             >
-                <img src="{{ url_for('static', filename=img.url) }}" alt="{{ img.name }}" loading="lazy" class="w-full h-full object-cover transform transition duration-500 group-hover:scale-110">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <p class="absolute bottom-3 left-3 right-3 text-white text-xs font-medium truncate opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition duration-300">{{ img.name }}</p>
+                <img src="{{ url_for('static', filename=img.url) }}" alt="{{ img.name }}" loading="lazy" class="w-full h-full object-cover transform transition duration-700 group-hover:scale-105">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                    <p class="text-white text-xs font-semibold truncate">{{ img.name }}</p>
+                    <p class="text-white/70 text-[10px]">{{ img.date }}</p>
                 </div>
             </div>
             {% else %}
-            <div class="col-span-full flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-600">
-                <p class="text-lg font-medium">Пока ничего нет. Сгенерируйте свое первое изображение!</p>
+            <div class="col-span-full flex flex-col items-center justify-center py-32 text-gray-500 dark:text-gray-400">
+                <div class="w-24 h-24 bg-white/40 dark:bg-black/20 backdrop-blur-md rounded-full flex items-center justify-center mb-6 shadow-inner">
+                    <svg class="w-10 h-10 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                </div>
+                <p class="text-xl font-medium">Галерея пуста</p>
+                <p class="text-sm mt-2">Время создать первый шедевр!</p>
             </div>
             {% endfor %}
         </div>
     </main>
 
     <div id="imageModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
-        <div class="absolute inset-0 bg-black/90 backdrop-blur-sm transition-opacity opacity-0" id="modalBackdrop"></div>
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-xl transition-opacity opacity-0" id="modalBackdrop"></div>
         <div class="absolute inset-0 flex items-center justify-center p-4 sm:p-8" id="modalWrapper">
-            <div id="modalContent" class="relative bg-white dark:bg-gray-900 w-full max-w-6xl h-[85vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row transform scale-95 opacity-0 transition-all duration-300 ring-1 ring-white/10">
-                <button onclick="closeModal()" class="absolute top-4 right-4 z-30 text-white/50 hover:text-white bg-black/50 hover:bg-black/80 rounded-full p-2 backdrop-blur transition-all">
+            <div id="modalContent" class="relative glass-panel w-full max-w-5xl h-[85vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row transform scale-95 opacity-0 transition-all duration-500 border border-white/20">
+                
+                <button onclick="closeModal()" class="absolute top-6 right-6 z-30 text-white hover:text-white bg-black/30 hover:bg-black/60 rounded-full p-2.5 backdrop-blur-md transition-all hover:rotate-90">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
-                <div class="flex-1 bg-black/95 flex items-center justify-center p-4 overflow-hidden relative group" id="modalLeftColumn">
-                    <button onclick="prevImage(event)" class="absolute left-4 p-3 rounded-full bg-black/40 hover:bg-black/80 text-white/70 hover:text-white backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 z-20 focus:outline-none">
+
+                <div class="flex-1 bg-black/20 flex items-center justify-center p-6 overflow-hidden relative group">
+                    <button onclick="prevImage(event)" class="absolute left-6 p-4 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 z-20">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                     </button>
-                    <img id="modalImage" src="" alt="" class="max-w-full max-h-full object-contain shadow-lg transition-opacity duration-200">
-                    <button onclick="nextImage(event)" class="absolute right-4 p-3 rounded-full bg-black/40 hover:bg-black/80 text-white/70 hover:text-white backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 z-20 focus:outline-none">
+                    <img id="modalImage" src="" alt="" class="max-w-full max-h-full object-contain drop-shadow-2xl transition-opacity duration-300 rounded-lg">
+                    <button onclick="nextImage(event)" class="absolute right-6 p-4 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 z-20">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </button>
                 </div>
-                <div class="w-full md:w-80 lg:w-96 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 flex flex-col z-10">
-                    <div class="p-6 border-b border-gray-100 dark:border-gray-800">
-                        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-1">Информация</h2>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Свойства файла</p>
+
+                <div class="w-full md:w-80 lg:w-96 bg-white/50 dark:bg-black/50 backdrop-blur-3xl border-l border-white/20 dark:border-white/5 flex flex-col z-10">
+                    <div class="p-8 border-b border-white/20 dark:border-white/5">
+                        <h2 class="text-2xl font-bold mb-1">Детали</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Информация о файле</p>
                     </div>
-                    <div class="p-6 flex-1 overflow-y-auto">
-                        <div class="space-y-6">
+                    <div class="p-8 flex-1 overflow-y-auto space-y-6">
+                        <div>
+                            <p class="text-xs uppercase tracking-widest text-gray-500 font-bold mb-2">Название</p>
+                            <p id="modalTitle" class="text-sm font-medium break-all"></p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-6">
                             <div>
-                                <p class="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">Имя файла</p>
-                                <p id="modalTitle" class="text-sm font-medium text-gray-900 dark:text-gray-200 break-all leading-relaxed font-mono"></p>
+                                <p class="text-xs uppercase tracking-widest text-gray-500 font-bold mb-2">Создано</p>
+                                <p id="modalDate" class="text-sm font-medium"></p>
                             </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p class="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">Дата</p>
-                                    <p id="modalDate" class="text-sm text-gray-900 dark:text-gray-300"></p>
-                                </div>
-                                <div>
-                                    <p class="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">Размер</p>
-                                    <p id="modalSize" class="text-sm text-gray-900 dark:text-gray-300"></p>
-                                </div>
+                            <div>
+                                <p class="text-xs uppercase tracking-widest text-gray-500 font-bold mb-2">Вес</p>
+                                <p id="modalSize" class="text-sm font-medium"></p>
                             </div>
-                            <hr class="border-gray-100 dark:border-gray-800">
-                            <div class="pt-2">
-                                <a id="downloadLink" href="#" download class="flex items-center justify-center w-full py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none transition-colors gap-2">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                    Скачать
-                                </a>
-                            </div>
+                        </div>
+                        <div class="pt-6">
+                            <a id="downloadLink" href="#" download class="flex items-center justify-center w-full py-3.5 px-4 rounded-2xl shadow-lg text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all gap-2 transform hover:-translate-y-0.5">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                Сохранить оригинал
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -155,14 +184,14 @@
                 modal.classList.add('hidden');
                 modalImg.src = '';
                 document.body.style.overflow = 'auto';
-            }, 300);
+            }, 500);
         }
 
         function updateModalContent() {
             if(images.length === 0) return;
             const imgData = images[currentIndex];
-            modalImg.style.opacity = '0.5';
-            setTimeout(() => modalImg.style.opacity = '1', 150);
+            modalImg.style.opacity = '0';
+            setTimeout(() => modalImg.style.opacity = '1', 50);
             modalImg.src = "/static/" + imgData.url;
             modalTitle.textContent = imgData.name;
             modalDate.textContent = imgData.date;
