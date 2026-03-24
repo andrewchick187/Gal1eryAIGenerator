@@ -7,6 +7,7 @@ from diffusers import StableDiffusionXLPipeline, EulerAncestralDiscreteScheduler
 # --- НАСТРОЙКИ ---
 IMAGE_FOLDER = 'outputs'
 ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg'}
+MODEL_URL = "https://civitai.com/api/download/models/2615702?type=Model&format=SafeTensor&size=pruned&fp=fp16"
 MODEL_FILENAME = "HassakuXL_Illustrious.safetensors"
 DEFAULT_NEGATIVE = "low quality, worst quality, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, jpeg artifacts, signature, watermark, username, blurry, artist name"
 
@@ -18,21 +19,31 @@ static_img_dir = os.path.join(app.static_folder, IMAGE_FOLDER)
 os.makedirs(static_img_dir, exist_ok=True)
 
 # --- ИНИЦИАЛИЗАЦИЯ НЕЙРОСЕТИ ---
-print("🚀 Загрузка нейросети (это может занять время)...")
-device = "cuda" if torch.cuda.is_available() else "cpu"
+pipe = None
+print("🚀 Проверка модели и инициализация нейросети...")
 
-try:
-    pipe = StableDiffusionXLPipeline.from_single_file(
-        MODEL_FILENAME,
-        torch_dtype=torch.float16 if device == "cuda" else torch.float32,
-        use_safetensors=True
-    )
-    pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
-    pipe.to(device)
-    print(f"✅ Модель успешно загружена на {device.upper()}!")
-except Exception as e:
-    print(f"❌ Ошибка загрузки модели: {e}")
-    pipe = None
+if not os.path.exists(MODEL_FILENAME):
+    print(f"❌ ВНИМАНИЕ: Файл модели '{MODEL_FILENAME}' не найден!")
+    print(f"Пожалуйста, скачайте его по ссылке и положите в корень проекта:")
+    print(f"Ссылка: {MODEL_URL}")
+else:
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    try:
+        pipe = StableDiffusionXLPipeline.from_single_file(
+            MODEL_FILENAME,
+            torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+            use_safetensors=True
+        )
+        pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
+        pipe.to(device)
+        
+        # Рекомендуется для экономии видеопамяти
+        if device == "cuda":
+            pipe.enable_model_cpu_offload()
+            
+        print(f"✅ Модель успешно загружена на {device.upper()}!")
+    except Exception as e:
+        print(f"❌ Ошибка загрузки модели: {e}")
 
 def allowed_file(filename):
     return os.path.splitext(filename)[1].lower() in ALLOWED_EXTENSIONS
@@ -79,7 +90,7 @@ def generate_art():
     if not user_prompt:
         return jsonify({'success': False, 'error': 'Промпт пустой'}), 400
 
-    # Настройка размеров (из нового файла)
+    # Настройка размеров
     dims = {"1:1": (1024, 1024), "16:9": (1216, 680), "9:16": (832, 1216)}
     width, height = dims.get(ratio, (832, 1216))
 
@@ -87,7 +98,6 @@ def generate_art():
     full_prompt = f"masterpiece, best quality, {style}, {user_prompt}"
 
     try:
-        # Используем inference_mode для экономии памяти и ускорения
         with torch.inference_mode():
             image = pipe(
                 prompt=full_prompt,
@@ -98,20 +108,19 @@ def generate_art():
                 height=height
             ).images[0]
 
-        # Сохранение на диск (вместо Base64)
-        filename = f"gen_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        # Автосохранение с уникальным именем (как в Colab)
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"gen_{timestamp}.png"
         file_path = os.path.join(app.static_folder, IMAGE_FOLDER, filename)
         image.save(file_path)
 
-        # Возвращаем URL до файла
+        # Возвращаем URL до файла для мгновенного отображения
         return jsonify({'success': True, 'url': url_for('static', filename=f"{IMAGE_FOLDER}/{filename}")})
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
 # --- ЗАПУСК СЕРВЕРА ---
 if __name__ == '__main__':
     print("🌍 Запуск локального сервера...")
-    # Запускаем строго на локальном хосте. Туннель Cloudflare запустим отдельно!
     app.run(debug=False, host='127.0.0.1', port=5000)
