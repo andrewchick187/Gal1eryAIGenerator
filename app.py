@@ -16,14 +16,14 @@ DEFAULT_NEGATIVE = "low quality, worst quality, bad anatomy, bad hands, text, er
 app = Flask(__name__)
 app.static_folder = 'static'
 
-# Создаем папку
+# Создаем папку для сохранения картинок
 static_img_dir = os.path.join(app.static_folder, IMAGE_FOLDER)
 os.makedirs(static_img_dir, exist_ok=True)
 
 # Глобальные переменные состояния
 pipe = None
 model_state = {
-    'status': 'initializing', # 'initializing', 'downloading', 'loading', 'ready', 'error'
+    'status': 'initializing',
     'progress': 0,
     'message': 'Сервер запущен. Проверка модели...'
 }
@@ -41,7 +41,7 @@ def download_model():
         
         downloaded = 0
         with open(MODEL_FILENAME, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192 * 4): # Увеличенный чанк для скорости
+            for chunk in response.iter_content(chunk_size=8192 * 4):
                 if chunk:
                     f.write(chunk)
                     downloaded += len(chunk)
@@ -79,33 +79,30 @@ def init_model_thread():
         temp_pipe.to(device)
         
         if device == "cuda":
-            temp_pipe.enable_model_cpu_offload() # Экономия памяти
+            temp_pipe.enable_model_cpu_offload() # Экономия видеопамяти
             
         pipe = temp_pipe
         model_state['status'] = 'ready'
         model_state['message'] = 'Нейросеть готова к работе!'
     except Exception as e:
         model_state['status'] = 'error'
-        model_state['message'] = f'Ошибка загрузки модели: {str(e)}'
+        model_state['message'] = f'Ошибка загрузки: {str(e)}'
 
-# Запускаем инициализацию в фоновом потоке, чтобы Flask не зависал
+# Запускаем инициализацию в фоновом потоке
 threading.Thread(target=init_model_thread, daemon=True).start()
 
 def allowed_file(filename):
     return os.path.splitext(filename)[1].lower() in ALLOWED_EXTENSIONS
 
 # --- РОУТЫ ---
-
 @app.route('/status')
 def get_status():
-    """Отдает текущий статус загрузки модели для фронтенда."""
     return jsonify(model_state)
 
 @app.route('/')
 def gallery():
     image_dir = os.path.join(app.static_folder, IMAGE_FOLDER)
     images = []
-    
     if os.path.exists(image_dir):
         files = os.listdir(image_dir)
         for f in files:
@@ -166,5 +163,4 @@ def generate_art():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
-    print("🌍 Запуск локального сервера...")
     app.run(debug=False, host='127.0.0.1', port=5000)
