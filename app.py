@@ -67,13 +67,8 @@ def generate():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-# --- Блок запуска туннеля и Flask ---
+# --- Блок запуска Flask ---
 if __name__ == '__main__':
-    from flask_cloudflared import run_with_cloudflared
-    
-    print("🌍 Запуск туннеля и сервера...")
-    # Используем официальный метод расширения Flask-объекта
-    run_with_cloudflared(app) 
-    
-    # Запускаем на 127.0.0.1, чтобы туннель гарантированно "увидел" локальный процесс
-    app.run()
+    print("🌍 Запуск локального сервера...")
+    # Запускаем строго на 127.0.0.1 и порту 5000
+    app.run(host='127.0.0.1', port=5000)
