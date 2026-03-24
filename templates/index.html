@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Gallery</title>
+    <title>AI Gallery</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     
@@ -19,12 +19,8 @@
                 }
             }
         }
-    </script>
-    <script>
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark')
-        } else {
-            document.documentElement.classList.remove('dark')
         }
     </script>
     <style>
@@ -39,37 +35,17 @@
     <header class="sticky top-0 z-40 w-full backdrop-blur-md bg-white/70 dark:bg-gray-900/70 border-b border-gray-200 dark:border-gray-800 transition-colors">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16 gap-4">
-                <a href="/" class="flex-shrink-0 font-semibold text-xl tracking-tight hover:opacity-80 transition">Gallery</a>
+                <a href="/" class="flex-shrink-0 font-semibold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-500 transition">AI Gallery</a>
 
-                <form action="/" method="get" class="flex-1 max-w-2xl flex items-center gap-3">
-                    <div class="relative w-full group">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg class="h-5 w-5 text-gray-400 group-focus-within:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </div>
-                        <input type="text" name="q" value="{{ search_query }}" placeholder="Поиск..." class="block w-full pl-10 pr-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 focus:outline-none focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all sm:text-sm">
-                    </div>
-                    <div class="relative min-w-[140px] hidden sm:block">
-                        <select name="sort" onchange="this.form.submit()" class="appearance-none block w-full pl-3 pr-10 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 sm:text-sm cursor-pointer">
-                            <option value="date_desc" {% if sort_by == 'date_desc' %}selected{% endif %}>Сначала новые</option>
-                            <option value="date_asc" {% if sort_by == 'date_asc' %}selected{% endif %}>Сначала старые</option>
-                            <option value="name" {% if sort_by == 'name' %}selected{% endif %}>По имени</option>
-                        </select>
-                    </div>
-                </form>
-
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 ml-auto">
                     <button id="theme-toggle" class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors">
                         <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
                         <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 011.414-1.414zM2 10a1 1 0 011-1h1a1 1 0 110 2H3a1 1 0 01-1-1zm4.95-4.646l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zm-5.9 9.9l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 011.414-1.414zM10 15a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
                     </button>
-                    <form id="uploadForm" enctype="multipart/form-data">
-                        <label class="cursor-pointer flex items-center justify-center p-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-lg shadow-blue-500/30">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            <input type="file" name="image" class="hidden" onchange="this.form.dispatchEvent(new Event('submit', {cancelable: true}))">
-                        </label>
-                    </form>
+                    <a href="/generator" class="flex items-center justify-center px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium transition-colors shadow-lg shadow-purple-500/30 gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        Создать
+                    </a>
                 </div>
             </div>
         </div>
@@ -89,19 +65,11 @@
             </div>
             {% else %}
             <div class="col-span-full flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-600">
-                <p class="text-lg font-medium">Ничего не найдено</p>
+                <p class="text-lg font-medium">Пока ничего нет. Сгенерируйте свое первое изображение!</p>
             </div>
             {% endfor %}
         </div>
     </main>
-
-    <a href="/generator" target="_blank" class="fixed bottom-8 right-8 z-40 p-4 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-lg hover:shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 transform hover:scale-110 flex items-center justify-center group" title="Генератор изображений">
-        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-        
-        <span class="absolute right-full mr-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold px-3 py-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg translate-x-2 group-hover:translate-x-0">
-            AI Генератор
-        </span>
-    </a>
 
     <div id="imageModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
         <div class="absolute inset-0 bg-black/90 backdrop-blur-sm transition-opacity opacity-0" id="modalBackdrop"></div>
@@ -142,24 +110,15 @@
                             </div>
                             <hr class="border-gray-100 dark:border-gray-800">
                             <div class="pt-2">
-                                <a id="downloadLink" href="#" download class="flex items-center justify-center w-full py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none transition-colors gap-2">
+                                <a id="downloadLink" href="#" download class="flex items-center justify-center w-full py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none transition-colors gap-2">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                     Скачать
                                 </a>
                             </div>
                         </div>
                     </div>
-                    <div class="p-4 bg-gray-50 dark:bg-gray-850 border-t border-gray-100 dark:border-gray-800 text-center">
-                        <p class="text-xs text-gray-400 dark:text-gray-500">Image Gallery v2.0</p>
-                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <div id="toast" class="fixed bottom-5 left-5 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
-        <div class="bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4 py-3 rounded-lg shadow-lg flex items-center gap-3">
-            <span id="toast-icon"></span><span id="toast-message" class="font-medium text-sm"></span>
         </div>
     </div>
 
@@ -200,6 +159,7 @@
         }
 
         function updateModalContent() {
+            if(images.length === 0) return;
             const imgData = images[currentIndex];
             modalImg.style.opacity = '0.5';
             setTimeout(() => modalImg.style.opacity = '1', 150);
@@ -230,27 +190,6 @@
             localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
             updateIcons();
         });
-
-        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            if (!this.querySelector('input').files.length) return;
-            try {
-                const res = await fetch('/upload', { method: 'POST', body: formData });
-                const data = await res.json();
-                showToast(data.success ? 'success' : 'error', data.success ? 'Загружено!' : data.error);
-                if(data.success) setTimeout(() => window.location.reload(), 1000);
-            } catch { showToast('error', 'Ошибка сети'); }
-            this.reset();
-        });
-
-        function showToast(type, msg) {
-            const t = document.getElementById('toast');
-            document.getElementById('toast-icon').innerHTML = type === 'success' ? '✅' : '❌';
-            document.getElementById('toast-message').textContent = msg;
-            t.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => t.classList.add('translate-y-20', 'opacity-0'), 3000);
-        }
     </script>
 </body>
 </html>
