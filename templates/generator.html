@@ -76,6 +76,42 @@
         </div>
     </div>
 
+    <div id="modelManagerModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm transition-all duration-300">
+        <div class="glass-panel p-6 rounded-3xl max-w-lg w-full mx-4 relative">
+            <button onclick="toggleModelManager()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-900 dark:hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h2 class="text-xl font-bold mb-6 text-purple-600 dark:text-purple-400">Менеджер Моделей</h2>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-semibold mb-2">Активная модель</label>
+                <div class="flex gap-2">
+                    <select id="modelSelect" class="flex-grow p-3 bg-white/50 dark:bg-black/30 border border-white/40 dark:border-gray-700/50 rounded-xl text-sm focus:outline-none backdrop-blur-sm appearance-none">
+                        <option>Загрузка списка...</option>
+                    </select>
+                    <button onclick="loadSelectedModel()" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-semibold transition-all shadow-md">
+                        Загрузить
+                    </button>
+                </div>
+                <p id="currentModelText" class="text-xs mt-2 text-gray-500">Текущая: <span class="font-bold">неизвестно</span></p>
+            </div>
+
+            <hr class="border-gray-300 dark:border-gray-700 my-6">
+
+            <div>
+                <label class="block text-sm font-semibold mb-2">Скачать с CivitAI</label>
+                <input type="text" id="civitaiUrl" placeholder="URL (напр. https://civitai.com/api/download/...)" class="w-full p-3 mb-3 bg-white/50 dark:bg-black/30 border border-white/40 dark:border-gray-700/50 rounded-xl text-sm focus:outline-none backdrop-blur-sm">
+                <input type="text" id="newModelFilename" placeholder="Имя файла (напр. MyModel.safetensors)" class="w-full p-3 mb-3 bg-white/50 dark:bg-black/30 border border-white/40 dark:border-gray-700/50 rounded-xl text-sm focus:outline-none backdrop-blur-sm">
+                <button onclick="startModelDownload()" class="w-full py-3 bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 rounded-xl text-sm font-bold transition-all hover:scale-[1.02]">
+                    Начать загрузку
+                </button>
+            </div>
+
+            <div id="downloadsArea" class="mt-4 space-y-2">
+                </div>
+        </div>
+    </div>
+
     <header class="glass-panel sticky top-0 z-40 border-b-0 border-t-0 border-l-0 border-r-0 border-b-white/20 dark:border-b-white/10">
         <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
             <div class="flex items-center gap-4">
@@ -86,12 +122,17 @@
                     Vision AI
                 </h1>
             </div>
-            <a href="/" class="text-sm font-semibold px-4 py-2 rounded-full glass-panel hover:bg-white/60 dark:hover:bg-white/10 transition-all">Галерея</a>
+            <div class="flex items-center gap-3">
+                <button onclick="toggleModelManager()" class="text-sm font-semibold px-4 py-2 rounded-full glass-panel hover:bg-white/60 dark:hover:bg-white/10 transition-all flex items-center gap-2 text-purple-600 dark:text-purple-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Модели
+                </button>
+                <a href="/" class="text-sm font-semibold px-4 py-2 rounded-full glass-panel hover:bg-white/60 dark:hover:bg-white/10 transition-all">Галерея</a>
+            </div>
         </div>
     </header>
 
     <main class="flex-grow flex flex-col lg:flex-row max-w-7xl mx-auto w-full p-6 lg:p-8 gap-10">
-        
         <div class="w-full lg:w-96 shrink-0 relative z-10">
             <div class="glass-panel p-8 rounded-[2rem] sticky top-28">
                 <div class="space-y-6">
@@ -175,15 +216,24 @@
 
         let isServerReady = false;
 
-        // Полная проверка статуса сервера
+        // --- ЛОГИКА СТАТУСА СЕРВЕРА И СМЕНЫ МОДЕЛИ ---
         async function checkServerStatus() {
-            if(isServerReady) return; // Останавливаем опрос, если уже готово
-
             try {
                 const res = await fetch('/status');
-                const data = await res.json();
+                const responseData = await res.json();
+                const data = responseData.state;
+                const currentModel = responseData.current_model;
                 
                 statusMessage.textContent = data.message;
+                
+                // Если статус не ready, показываем оверлей
+                if (data.status !== 'ready') {
+                    isServerReady = false;
+                    statusOverlay.classList.remove('hidden');
+                    statusOverlay.style.opacity = '1';
+                    generateBtn.disabled = true;
+                    btnText.textContent = 'Ожидание сервера...';
+                }
 
                 if (data.status === 'downloading') {
                     statusTitle.textContent = "Скачивание файлов";
@@ -198,12 +248,14 @@
                     progressText.classList.add('hidden');
                 } 
                 else if (data.status === 'ready') {
-                    isServerReady = true;
-                    statusOverlay.style.opacity = '0';
-                    setTimeout(() => statusOverlay.classList.add('hidden'), 500);
-                    
-                    generateBtn.disabled = false;
-                    btnText.textContent = 'Создать шедевр';
+                    if (!isServerReady) {
+                        isServerReady = true;
+                        statusOverlay.style.opacity = '0';
+                        setTimeout(() => statusOverlay.classList.add('hidden'), 500);
+                        generateBtn.disabled = false;
+                        btnText.textContent = 'Создать шедевр';
+                        fetchModelList(); // Обновляем список моделей
+                    }
                 }
                 else if (data.status === 'error') {
                     statusTitle.textContent = "Системная ошибка";
@@ -213,19 +265,135 @@
                     progressText.classList.add('hidden');
                 }
 
-                if (!isServerReady && data.status !== 'error') {
-                    setTimeout(checkServerStatus, 2000); // Опрашиваем каждые 2 секунды
-                }
+                // Продолжаем опрос всегда (на случай смены модели)
+                setTimeout(checkServerStatus, 2000);
             } catch (err) {
                 console.error("Ошибка проверки статуса:", err);
                 setTimeout(checkServerStatus, 3000);
             }
         }
 
-        // Запускаем проверку при загрузке страницы
         checkServerStatus();
 
-        // Логика кнопки генерации
+        // --- МЕНЕДЖЕР МОДЕЛЕЙ ---
+        const modal = document.getElementById('modelManagerModal');
+        let downloadPollInterval = null;
+
+        function toggleModelManager() {
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                fetchModelList();
+                startDownloadPolling();
+            } else {
+                modal.classList.add('hidden');
+                clearInterval(downloadPollInterval);
+            }
+        }
+
+        async function fetchModelList() {
+            try {
+                const res = await fetch('/api/models');
+                const data = await res.json();
+                const select = document.getElementById('modelSelect');
+                select.innerHTML = '';
+                
+                data.models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    if (model === data.current) option.selected = true;
+                    select.appendChild(option);
+                });
+                
+                document.getElementById('currentModelText').innerHTML = `Текущая: <span class="font-bold text-purple-600 dark:text-purple-400">${data.current || 'Не загружена'}</span>`;
+            } catch (err) {
+                console.error('Ошибка получения списка моделей', err);
+            }
+        }
+
+        async function loadSelectedModel() {
+            const filename = document.getElementById('modelSelect').value;
+            if(!filename) return;
+            
+            toggleModelManager(); // Закрываем модалку
+            
+            await fetch('/api/models/load', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename })
+            });
+            
+            // Интерфейс обновится автоматически благодаря checkServerStatus()
+        }
+
+        async function startModelDownload() {
+            const url = document.getElementById('civitaiUrl').value.trim();
+            const filename = document.getElementById('newModelFilename').value.trim();
+            
+            if(!url || !filename) {
+                alert("Заполните URL и Имя файла!");
+                return;
+            }
+            
+            document.getElementById('civitaiUrl').value = '';
+            document.getElementById('newModelFilename').value = '';
+
+            await fetch('/api/models/download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url, filename })
+            });
+            
+            startDownloadPolling();
+        }
+
+        function startDownloadPolling() {
+            if (downloadPollInterval) clearInterval(downloadPollInterval);
+            pollDownloads();
+            downloadPollInterval = setInterval(pollDownloads, 1000);
+        }
+
+        async function pollDownloads() {
+            try {
+                const res = await fetch('/api/models/downloads_status');
+                const downloads = await res.json();
+                const area = document.getElementById('downloadsArea');
+                area.innerHTML = '';
+                
+                let activeDownloads = 0;
+
+                for (const [filename, info] of Object.entries(downloads)) {
+                    if (info.status === 'downloading' || info.status === 'starting') activeDownloads++;
+                    
+                    const div = document.createElement('div');
+                    div.className = 'bg-white/40 dark:bg-black/20 p-3 rounded-xl border border-gray-200 dark:border-gray-800 text-sm';
+                    
+                    let statusText = `<span class="text-blue-500">Скачивание... ${info.progress}%</span>`;
+                    if (info.status === 'completed') statusText = `<span class="text-green-500">Готово!</span>`;
+                    if (info.status === 'error') statusText = `<span class="text-red-500">Ошибка: ${info.error}</span>`;
+
+                    div.innerHTML = `
+                        <div class="flex justify-between mb-1">
+                            <span class="font-medium truncate max-w-[200px]">${filename}</span>
+                            ${statusText}
+                        </div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-1.5">
+                            <div class="bg-gradient-to-r from-blue-400 to-purple-500 h-1.5 rounded-full transition-all" style="width: ${info.progress}%"></div>
+                        </div>
+                    `;
+                    area.appendChild(div);
+                }
+                
+                if (activeDownloads === 0 && Object.keys(downloads).length > 0) {
+                    fetchModelList(); // Обновляем список, если кто-то докачался
+                }
+            } catch (err) {
+                console.error("Ошибка опроса статуса загрузок", err);
+            }
+        }
+
+
+        // --- ГЕНЕРАЦИЯ ИЗОБРАЖЕНИЯ ---
         generateBtn.addEventListener('click', async () => {
             const prompt = promptInput.value.trim();
             if (!prompt) {
