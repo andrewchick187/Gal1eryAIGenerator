@@ -37,10 +37,14 @@ downloads_state = {}
 
 # --- ФУНКЦИИ МОДЕЛЕЙ И ЗАГРУЗКИ ---
 
-def download_file(url, filename, is_main_init=False):
+def download_file(url, filename, is_main_init=False, api_key=None):
     filepath = os.path.join(MODELS_FOLDER, filename)
     try:
-        response = requests.get(url, stream=True)
+        headers = {}
+        if api_key:
+            headers['Authorization'] = f'Bearer {api_key}'
+            
+        response = requests.get(url, stream=True, headers=headers)
         response.raise_for_status()
         total_size = int(response.headers.get('content-length', 0))
         downloaded = 0
@@ -185,6 +189,7 @@ def api_download_model():
     data = request.json
     url = data.get('url')
     filename = data.get('filename')
+    api_key = data.get('api_key')
     
     if not url or not filename:
         return jsonify({'success': False, 'error': 'Укажите URL и имя файла'}), 400
@@ -194,7 +199,7 @@ def api_download_model():
         
     downloads_state[filename] = {'progress': 0, 'status': 'starting', 'error': ''}
     
-    threading.Thread(target=download_file, args=(url, filename, False), daemon=True).start()
+    threading.Thread(target=download_file, args=(url, filename, False, api_key), daemon=True).start()
     return jsonify({'success': True, 'message': 'Загрузка начата'})
 
 @app.route('/api/models/downloads_status', methods=['GET'])
