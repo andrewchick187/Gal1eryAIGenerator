@@ -6,7 +6,7 @@ import requests
 import torch
 import gc
 from flask import Flask, render_template, request, jsonify, url_for
-from diffusers import AutoPipelineForText2Image, EulerAncestralDiscreteScheduler
+from diffusers import StableDiffusionXLPipeline, EulerAncestralDiscreteScheduler
 
 # --- НАСТРОЙКИ ---
 IMAGE_FOLDER = 'outputs'
@@ -111,7 +111,7 @@ def load_model_into_vram(filename):
 
     model_state['status'] = 'loading'
     model_state['progress'] = 100
-    model_state['message'] = f'Загрузка {filename} в VRAM...'
+    model_state['message'] = f'Загрузка SDXL модели {filename} в VRAM...'
     
     try:
         if pipe is not None:
@@ -122,8 +122,8 @@ def load_model_into_vram(filename):
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
         
-        # AutoPipeline сам определит тип модели (SD 1.5, SDXL и т.д.)
-        temp_pipe = AutoPipelineForText2Image.from_single_file(
+        # Строгая привязка к архитектуре SDXL
+        temp_pipe = StableDiffusionXLPipeline.from_single_file(
             filepath,
             torch_dtype=torch.float16 if device == "cuda" else torch.float32,
             use_safetensors=True
@@ -137,11 +137,11 @@ def load_model_into_vram(filename):
         pipe = temp_pipe
         current_model_name = filename
         model_state['status'] = 'ready'
-        model_state['message'] = f'Модель {filename} готова!'
+        model_state['message'] = f'Модель SDXL {filename} готова!'
         return True
     except Exception as e:
         model_state['status'] = 'error'
-        model_state['message'] = f'Ошибка загрузки: {str(e)}'
+        model_state['message'] = f'Ошибка загрузки (убедитесь, что это SDXL): {str(e)}'
         return False
 
 def startup_check():
