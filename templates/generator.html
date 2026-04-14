@@ -28,7 +28,6 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 20px; }
         
-        /* Стеклянный эффект */
         .glass-panel {
             background: rgba(255, 255, 255, 0.4);
             backdrop-filter: blur(24px);
@@ -45,7 +44,6 @@
         .image-fade-in { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
         
-        /* Анимированный градиент фона */
         .bg-gradient-animate {
             background: linear-gradient(-45deg, #f3e8ff, #e0e7ff, #fce7f3, #fae8ff);
             background-size: 400% 400%;
@@ -58,7 +56,6 @@
         }
         @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
         
-        /* Стили для ползунков */
         input[type=range] {
             -webkit-appearance: none;
             width: 100%;
@@ -85,17 +82,38 @@
 <body class="bg-gradient-animate text-gray-900 dark:text-gray-100 transition-colors duration-500 min-h-screen flex flex-col relative overflow-x-hidden">
 
     <div id="serverStatusOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-white/20 dark:bg-black/40 backdrop-blur-xl transition-all duration-500">
-        <div class="glass-panel p-8 rounded-3xl max-w-md w-full mx-4 text-center transform transition-all">
+        <div class="glass-panel p-8 rounded-3xl max-w-md w-full mx-4 text-center transform transition-all flex flex-col items-center">
+            
             <div id="statusIcon" class="mb-6 flex justify-center">
                 <div class="w-16 h-16 border-4 border-purple-500/30 border-t-purple-600 rounded-full animate-spin"></div>
             </div>
+            
             <h2 class="text-xl font-semibold mb-2" id="statusTitle">Подготовка сервера</h2>
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-6" id="statusMessage">Подключение...</p>
             
-            <div id="progressContainer" class="hidden w-full bg-gray-200 dark:bg-gray-800 rounded-full h-3 mb-2 overflow-hidden">
+            <div id="setupContainer" class="hidden w-full text-left">
+                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-3 text-center">Рекомендуемые модели SDXL:</p>
+                <div class="space-y-3">
+                    <button onclick="startInitDownload('https://civitai.com/api/download/models/2615702?type=Model&format=SafeTensor&size=pruned&fp=fp16', 'HassakuXL_Anime.safetensors')" class="w-full p-4 bg-white/60 dark:bg-black/40 border border-purple-500/40 rounded-xl hover:scale-[1.02] transition-transform text-sm flex justify-between items-center shadow-sm">
+                        <span class="font-bold text-purple-600 dark:text-purple-400">Hassaku XL</span>
+                        <span class="text-xs text-gray-500 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-md">Аниме стиль</span>
+                    </button>
+                    <button onclick="startInitDownload('https://civitai.com/api/download/models/354657?type=Model&format=SafeTensor&size=pruned&fp=fp16', 'JuggernautXL_Realism.safetensors')" class="w-full p-4 bg-white/60 dark:bg-black/40 border border-blue-500/40 rounded-xl hover:scale-[1.02] transition-transform text-sm flex justify-between items-center shadow-sm">
+                        <span class="font-bold text-blue-600 dark:text-blue-400">Juggernaut XL v9</span>
+                        <span class="text-xs text-gray-500 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-md">Фотореализм</span>
+                    </button>
+                    <button onclick="startInitDownload('https://civitai.com/api/download/models/128713?type=Model&format=SafeTensor&size=pruned&fp=fp16', 'DreamShaperXL_Art.safetensors')" class="w-full p-4 bg-white/60 dark:bg-black/40 border border-green-500/40 rounded-xl hover:scale-[1.02] transition-transform text-sm flex justify-between items-center shadow-sm">
+                        <span class="font-bold text-green-600 dark:text-green-400">DreamShaper XL</span>
+                        <span class="text-xs text-gray-500 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-md">Универсальная</span>
+                    </button>
+                </div>
+                <p class="text-[10px] text-gray-400 mt-4 text-center">Вы также можете скачать любую другую модель позже через "Менеджер Моделей".</p>
+            </div>
+
+            <div id="progressContainer" class="hidden w-full bg-gray-200 dark:bg-gray-800 rounded-full h-3 mb-2 overflow-hidden mt-4">
                 <div id="progressBar" class="bg-gradient-to-r from-purple-500 to-indigo-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
             </div>
-            <p id="progressText" class="hidden text-xs font-bold text-purple-600 dark:text-purple-400 text-right">0%</p>
+            <p id="progressText" class="hidden text-xs font-bold text-purple-600 dark:text-purple-400 self-end mt-1">0%</p>
         </div>
     </div>
 
@@ -299,10 +317,25 @@
         const progressContainer = document.getElementById('progressContainer');
         const progressBar = document.getElementById('progressBar');
         const progressText = document.getElementById('progressText');
+        const setupContainer = document.getElementById('setupContainer');
 
         let isServerReady = false;
 
-        // --- ЛОГИКА СТАТУСА СЕРВЕРА И СМЕНЫ МОДЕЛИ ---
+        // --- ИНИЦИАЛИЗАЦИЯ И ВЫБОР МОДЕЛИ ---
+        async function startInitDownload(url, filename) {
+            setupContainer.classList.add('hidden');
+            statusIcon.classList.remove('hidden');
+            statusTitle.textContent = "Запуск скачивания...";
+            statusMessage.textContent = "Подготовка...";
+            
+            await fetch('/api/models/download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url, filename: filename, is_init: true })
+            });
+        }
+
+        // --- ЛОГИКА СТАТУСА СЕРВЕРА ---
         async function checkServerStatus() {
             try {
                 const res = await fetch('/status');
@@ -315,7 +348,6 @@
                     mainActiveModelText.textContent = currentModel;
                 }
                 
-                // Если статус не ready, показываем оверлей
                 if (data.status !== 'ready') {
                     isServerReady = false;
                     statusOverlay.classList.remove('hidden');
@@ -324,7 +356,16 @@
                     btnText.textContent = 'Ожидание сервера...';
                 }
 
-                if (data.status === 'downloading') {
+                if (data.status === 'awaiting_setup') {
+                    statusIcon.classList.add('hidden');
+                    setupContainer.classList.remove('hidden');
+                    statusTitle.textContent = "Добро пожаловать!";
+                    progressContainer.classList.add('hidden');
+                    progressText.classList.add('hidden');
+                }
+                else if (data.status === 'downloading') {
+                    statusIcon.classList.remove('hidden');
+                    setupContainer.classList.add('hidden');
                     statusTitle.textContent = "Скачивание файлов";
                     progressContainer.classList.remove('hidden');
                     progressText.classList.remove('hidden');
@@ -332,6 +373,8 @@
                     progressText.textContent = data.progress + '%';
                 } 
                 else if (data.status === 'loading') {
+                    statusIcon.classList.remove('hidden');
+                    setupContainer.classList.add('hidden');
                     statusTitle.textContent = "Запуск нейросети";
                     progressContainer.classList.add('hidden');
                     progressText.classList.add('hidden');
@@ -343,7 +386,7 @@
                         setTimeout(() => statusOverlay.classList.add('hidden'), 500);
                         generateBtn.disabled = false;
                         btnText.textContent = 'Создать шедевр';
-                        fetchModelList(); // Обновляем список моделей
+                        fetchModelList(); 
                     }
                 }
                 else if (data.status === 'error') {
@@ -495,7 +538,6 @@
             viewerModal.classList.add('hidden');
         }
 
-        // Подсказка при наведении на картинку
         generatedImage.addEventListener('mouseenter', () => zoomHint.classList.remove('hidden'));
         generatedImage.addEventListener('mouseleave', () => zoomHint.classList.add('hidden'));
 
@@ -536,7 +578,7 @@
                         generatedImage.classList.remove('hidden');
                         placeholder.classList.add('hidden');
                         zoomHint.classList.remove('hidden');
-                        setTimeout(() => zoomHint.classList.add('hidden'), 2000); // Показать подсказку на 2 сек
+                        setTimeout(() => zoomHint.classList.add('hidden'), 2000);
                     };
                 } else {
                     alert('Ошибка генерации: ' + data.error);
