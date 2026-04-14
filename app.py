@@ -226,8 +226,12 @@ def generate_art():
 
     data = request.json
     user_prompt = data.get('prompt', '').strip()
+    user_negative = data.get('negative_prompt', '').strip()
     ratio = data.get('ratio', '9:16')
     style = data.get('style', 'Anime')
+    steps = int(data.get('steps', 28))
+    guidance_scale = float(data.get('guidance_scale', 7.0))
+    seed = int(data.get('seed', -1))
 
     if not user_prompt:
         return jsonify({'success': False, 'error': 'Промпт пустой'}), 400
@@ -236,16 +240,26 @@ def generate_art():
     width, height = dims.get(ratio, (832, 1216))
 
     full_prompt = f"masterpiece, best quality, {style}, {user_prompt}"
+    
+    # Комбинируем негативный промпт
+    final_negative = f"{DEFAULT_NEGATIVE}, {user_negative}" if user_negative else DEFAULT_NEGATIVE
+
+    # Обработка сида
+    generator = None
+    if seed != -1:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        generator = torch.Generator(device=device).manual_seed(seed)
 
     try:
         with torch.inference_mode():
             image = pipe(
                 prompt=full_prompt,
-                negative_prompt=DEFAULT_NEGATIVE,
-                num_inference_steps=28,
-                guidance_scale=7.0,
+                negative_prompt=final_negative,
+                num_inference_steps=steps,
+                guidance_scale=guidance_scale,
                 width=width,
-                height=height
+                height=height,
+                generator=generator
             ).images[0]
 
         timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
