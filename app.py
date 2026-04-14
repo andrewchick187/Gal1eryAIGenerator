@@ -6,7 +6,7 @@ import requests
 import torch
 import gc
 from flask import Flask, render_template, request, jsonify, url_for
-from diffusers import StableDiffusionXLPipeline, EulerAncestralDiscreteScheduler
+from diffusers import AutoPipelineForText2Image, EulerAncestralDiscreteScheduler
 
 # --- НАСТРОЙКИ ---
 IMAGE_FOLDER = 'outputs'
@@ -91,7 +91,6 @@ def download_file(url, filename, is_main_init=False, api_key=None):
             error_msg = "Файл не найден (ошибка 404)"
             
         if is_main_init:
-            # Если была ошибка при первой настройке, возвращаем обратно в меню выбора
             model_state['status'] = 'awaiting_setup'
             model_state['message'] = f'Ошибка: {error_msg}. Попробуйте снова.'
         else:
@@ -122,7 +121,9 @@ def load_model_into_vram(filename):
                 torch.cuda.empty_cache()
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        temp_pipe = StableDiffusionXLPipeline.from_single_file(
+        
+        # AutoPipeline сам определит тип модели (SD 1.5, SDXL и т.д.)
+        temp_pipe = AutoPipelineForText2Image.from_single_file(
             filepath,
             torch_dtype=torch.float16 if device == "cuda" else torch.float32,
             use_safetensors=True
@@ -148,11 +149,9 @@ def startup_check():
     models_list = [f for f in os.listdir(MODELS_FOLDER) if f.endswith('.safetensors')]
     
     if not models_list:
-        # Папка пуста - переходим в режим ожидания выбора от пользователя
         model_state['status'] = 'awaiting_setup'
         model_state['message'] = 'Выберите модель для первого запуска'
     else:
-        # Загружаем первую доступную
         load_model_into_vram(models_list[0])
 
 threading.Thread(target=startup_check, daemon=True).start()
@@ -204,7 +203,7 @@ def api_download_model():
     url = data.get('url')
     filename = data.get('filename')
     api_key = data.get('api_key')
-    is_init = data.get('is_init', False) # Проверяем, первоначальная ли это загрузка
+    is_init = data.get('is_init', False)
     
     if not url or not filename:
         return jsonify({'success': False, 'error': 'Укажите URL и имя файла'}), 400
@@ -213,7 +212,6 @@ def api_download_model():
         filename += '.safetensors'
         
     if is_init:
-        # Переводим сервер в статус скачивания главной модели
         model_state['status'] = 'downloading'
         model_state['message'] = f'Скачивание {filename}...'
         model_state['progress'] = 0
@@ -225,7 +223,6 @@ def api_download_model():
 
         threading.Thread(target=init_download_wrapper, daemon=True).start()
     else:
-        # Фоновая загрузка
         downloads_state[filename] = {'progress': 0, 'status': 'starting', 'error': ''}
         threading.Thread(target=download_file, args=(url, filename, False, api_key), daemon=True).start()
         
