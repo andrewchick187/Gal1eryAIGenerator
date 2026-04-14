@@ -1,6 +1,7 @@
 import os
 import datetime
 import threading
+import time
 import requests
 import torch
 import gc
@@ -9,10 +10,8 @@ from diffusers import StableDiffusionXLPipeline, EulerAncestralDiscreteScheduler
 
 # --- НАСТРОЙКИ ---
 IMAGE_FOLDER = 'outputs'
-MODELS_FOLDER = 'models' # Новая папка для моделей
+MODELS_FOLDER = 'models'
 ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg'}
-DEFAULT_MODEL_URL = "https://civitai.com/api/download/models/2615702?type=Model&format=SafeTensor&size=pruned&fp=fp16"
-DEFAULT_MODEL_FILENAME = "HassakuXL_Illustrious.safetensors"
 DEFAULT_NEGATIVE = "low quality, worst quality, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, jpeg artifacts, signature, watermark, username, blurry, artist name"
 
 app = Flask(__name__)
@@ -29,23 +28,42 @@ current_model_name = None
 model_state = {
     'status': 'initializing',
     'progress': 0,
-    'message': 'Сервер запущен. Проверка модели...'
+    'message': 'Проверка файлов...'
 }
 
-# Менеджер фоновых загрузок: { filename: { progress: 0, status: 'downloading', error: '' } }
 downloads_state = {}
 
 # --- ФУНКЦИИ МОДЕЛЕЙ И ЗАГРУЗКИ ---
 
 def download_file(url, filename, is_main_init=False, api_key=None):
     filepath = os.path.join(MODELS_FOLDER, filename)
+    max_retries = 3
+    
     try:
-        headers = {}
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        }
         if api_key:
             headers['Authorization'] = f'Bearer {api_key}'
             
-        response = requests.get(url, stream=True, headers=headers)
-        response.raise_for_status()
+        response = None
+        for attempt in range(max_retries):
+            try:
+                response = requests.get(url, stream=True, headers=headers, timeout=15)
+                response.raise_for_status()
+                break
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code in [500, 502, 503, 504] and attempt < max_retries - 1:
+                    wait_time = 5 * (attempt + 1)
+                    if is_main_init:
+                        model_state['message'] = f'Сервер CivitAI занят. Попытка {attempt + 2}/{max_retries} через {wait_time}с...'
+                    else:
+                        downloads_state[filename] = {'progress': 0, 'status': 'downloading', 'error': f'Ожидание сервера ({wait_time}с)...'}
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    raise
+
         total_size = int(response.headers.get('content-length', 0))
         downloaded = 0
         
@@ -64,13 +82,21 @@ def download_file(url, filename, is_main_init=False, api_key=None):
         if not is_main_init:
             downloads_state[filename] = {'progress': 100, 'status': 'completed', 'error': ''}
         return True
+        
     except Exception as e:
+        error_msg = str(e)
+        if "401" in error_msg:
+            error_msg = "Требуется API ключ (ошибка 401)"
+        elif "404" in error_msg:
+            error_msg = "Файл не найден (ошибка 404)"
+            
         if is_main_init:
-            model_state['status'] = 'error'
-            model_state['message'] = f'Ошибка скачивания: {str(e)}'
+            # Если была ошибка при первой настройке, возвращаем обратно в меню выбора
+            model_state['status'] = 'awaiting_setup'
+            model_state['message'] = f'Ошибка: {error_msg}. Попробуйте снова.'
         else:
-            downloads_state[filename] = {'progress': 0, 'status': 'error', 'error': str(e)}
-        # Удаляем битый файл
+            downloads_state[filename] = {'progress': 0, 'status': 'error', 'error': error_msg}
+            
         if os.path.exists(filepath):
             os.remove(filepath)
         return False
@@ -86,10 +112,9 @@ def load_model_into_vram(filename):
 
     model_state['status'] = 'loading'
     model_state['progress'] = 100
-    model_state['message'] = f'Загрузка {filename} в видеокарту (VRAM)...'
+    model_state['message'] = f'Загрузка {filename} в VRAM...'
     
     try:
-        # Очистка старой модели из памяти, если она была
         if pipe is not None:
             del pipe
             gc.collect()
@@ -106,42 +131,31 @@ def load_model_into_vram(filename):
         temp_pipe.to(device)
         
         if device == "cuda":
-            temp_pipe.enable_model_cpu_offload() # Экономия видеопамяти
+            temp_pipe.enable_model_cpu_offload()
             
         pipe = temp_pipe
         current_model_name = filename
         model_state['status'] = 'ready'
-        model_state['message'] = f'Модель {filename} готова к работе!'
+        model_state['message'] = f'Модель {filename} готова!'
         return True
     except Exception as e:
         model_state['status'] = 'error'
-        model_state['message'] = f'Ошибка загрузки модели: {str(e)}'
+        model_state['message'] = f'Ошибка загрузки: {str(e)}'
         return False
 
-def init_model_thread():
+def startup_check():
     global model_state
-    
-    default_filepath = os.path.join(MODELS_FOLDER, DEFAULT_MODEL_FILENAME)
-    
-    # 1. Проверяем и скачиваем дефолтную модель, если папка пуста
     models_list = [f for f in os.listdir(MODELS_FOLDER) if f.endswith('.safetensors')]
     
-    if not models_list and not os.path.exists(default_filepath):
-        model_state['status'] = 'downloading'
-        model_state['message'] = 'Первый запуск: Скачивание базовой модели...'
-        success = download_file(DEFAULT_MODEL_URL, DEFAULT_MODEL_FILENAME, is_main_init=True)
-        if not success: 
-            return
-        filename_to_load = DEFAULT_MODEL_FILENAME
+    if not models_list:
+        # Папка пуста - переходим в режим ожидания выбора от пользователя
+        model_state['status'] = 'awaiting_setup'
+        model_state['message'] = 'Выберите модель для первого запуска'
     else:
-        # Загружаем первую попавшуюся модель (или дефолтную)
-        filename_to_load = DEFAULT_MODEL_FILENAME if os.path.exists(default_filepath) else models_list[0]
-            
-    # 2. Загружаем в память
-    load_model_into_vram(filename_to_load)
+        # Загружаем первую доступную
+        load_model_into_vram(models_list[0])
 
-# Запускаем инициализацию
-threading.Thread(target=init_model_thread, daemon=True).start()
+threading.Thread(target=startup_check, daemon=True).start()
 
 def allowed_file(filename):
     return os.path.splitext(filename)[1].lower() in ALLOWED_EXTENSIONS
@@ -190,6 +204,7 @@ def api_download_model():
     url = data.get('url')
     filename = data.get('filename')
     api_key = data.get('api_key')
+    is_init = data.get('is_init', False) # Проверяем, первоначальная ли это загрузка
     
     if not url or not filename:
         return jsonify({'success': False, 'error': 'Укажите URL и имя файла'}), 400
@@ -197,9 +212,23 @@ def api_download_model():
     if not filename.endswith('.safetensors'):
         filename += '.safetensors'
         
-    downloads_state[filename] = {'progress': 0, 'status': 'starting', 'error': ''}
-    
-    threading.Thread(target=download_file, args=(url, filename, False, api_key), daemon=True).start()
+    if is_init:
+        # Переводим сервер в статус скачивания главной модели
+        model_state['status'] = 'downloading'
+        model_state['message'] = f'Скачивание {filename}...'
+        model_state['progress'] = 0
+        
+        def init_download_wrapper():
+            success = download_file(url, filename, is_main_init=True, api_key=api_key)
+            if success:
+                load_model_into_vram(filename)
+
+        threading.Thread(target=init_download_wrapper, daemon=True).start()
+    else:
+        # Фоновая загрузка
+        downloads_state[filename] = {'progress': 0, 'status': 'starting', 'error': ''}
+        threading.Thread(target=download_file, args=(url, filename, False, api_key), daemon=True).start()
+        
     return jsonify({'success': True, 'message': 'Загрузка начата'})
 
 @app.route('/api/models/downloads_status', methods=['GET'])
@@ -213,16 +242,14 @@ def api_load_model():
     if not filename:
         return jsonify({'success': False, 'error': 'Укажите имя файла'}), 400
         
-    # Запускаем загрузку в фоне, чтобы не блочить запрос
     threading.Thread(target=load_model_into_vram, args=(filename,), daemon=True).start()
-    return jsonify({'success': True, 'message': 'Инициализирована загрузка модели в VRAM'})
-
+    return jsonify({'success': True, 'message': 'Инициализирована загрузка модели'})
 
 # --- РОУТ ГЕНЕРАЦИИ ---
 @app.route('/generate', methods=['POST'])
 def generate_art():
     if model_state['status'] != 'ready' or pipe is None:
-        return jsonify({'success': False, 'error': 'Нейросеть еще не готова. Дождитесь загрузки.'}), 503
+        return jsonify({'success': False, 'error': 'Нейросеть еще не готова.'}), 503
 
     data = request.json
     user_prompt = data.get('prompt', '').strip()
@@ -240,11 +267,8 @@ def generate_art():
     width, height = dims.get(ratio, (832, 1216))
 
     full_prompt = f"masterpiece, best quality, {style}, {user_prompt}"
-    
-    # Комбинируем негативный промпт
     final_negative = f"{DEFAULT_NEGATIVE}, {user_negative}" if user_negative else DEFAULT_NEGATIVE
 
-    # Обработка сида
     generator = None
     if seed != -1:
         device = "cuda" if torch.cuda.is_available() else "cpu"
