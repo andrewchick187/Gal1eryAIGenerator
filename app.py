@@ -25,7 +25,7 @@ os.makedirs(MODELS_FOLDER, exist_ok=True)
 # Глобальные переменные состояния
 pipe = None
 current_model_name = None
-current_model_type = None  # Сохраняем тип загруженной модели (SDXL или SD 1.5)
+current_model_type = None
 model_state = {
     'status': 'initializing',
     'progress': 0,
@@ -124,19 +124,37 @@ def load_model_into_vram(filename):
         device = "cuda" if torch.cuda.is_available() else "cpu"
         dtype = torch.float16 if device == "cuda" else torch.float32
         
-        # Эвристика по размеру файла: SDXL обычно весит больше 4.5 ГБ
         file_size = os.path.getsize(filepath)
         is_probably_sdxl = file_size > 4.5 * 1024 * 1024 * 1024
 
         def try_load_sdxl():
-            return StableDiffusionXLPipeline.from_single_file(
-                filepath, torch_dtype=dtype, use_safetensors=True
-            ), "SDXL"
+            try:
+                # Явное указание базового конфига SDXL исправляет ошибку с отсутствующим CLIPTextModel
+                return StableDiffusionXLPipeline.from_single_file(
+                    filepath, 
+                    torch_dtype=dtype, 
+                    use_safetensors=True,
+                    config="stabilityai/stable-diffusion-xl-base-1.0"
+                ), "SDXL"
+            except TypeError:
+                # Fallback для старых версий diffusers, где аргумент config не поддерживается
+                return StableDiffusionXLPipeline.from_single_file(
+                    filepath, torch_dtype=dtype, use_safetensors=True
+                ), "SDXL"
 
         def try_load_sd15():
-            return StableDiffusionPipeline.from_single_file(
-                filepath, torch_dtype=dtype, use_safetensors=True
-            ), "SD 1.5 / Стандартная"
+            try:
+                # Явное указание базового конфига SD 1.5
+                return StableDiffusionPipeline.from_single_file(
+                    filepath, 
+                    torch_dtype=dtype, 
+                    use_safetensors=True,
+                    config="runwayml/stable-diffusion-v1-5"
+                ), "SD 1.5 / Стандартная"
+            except TypeError:
+                return StableDiffusionPipeline.from_single_file(
+                    filepath, torch_dtype=dtype, use_safetensors=True
+                ), "SD 1.5 / Стандартная"
 
         temp_pipe = None
         loaded_type = ""
@@ -154,6 +172,7 @@ def load_model_into_vram(filename):
                 print(f"Не удалось загрузить как SD 1.5 ({e1}), пробуем как SDXL...")
                 temp_pipe, loaded_type = try_load_sdxl()
 
+        # Настраиваем сэмплер
         temp_pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(temp_pipe.scheduler.config)
         temp_pipe.to(device)
         
@@ -288,11 +307,9 @@ def generate_art():
     if not user_prompt:
         return jsonify({'success': False, 'error': 'Промпт пустой'}), 400
 
-    # Разные базовые разрешения в зависимости от архитектуры модели
     if current_model_type == "SDXL":
         dims = {"1:1": (1024, 1024), "16:9": (1216, 680), "9:16": (832, 1216)}
     else:
-        # Для SD 1.5 и подобных базовое разрешение 512x512
         dims = {"1:1": (512, 512), "16:9": (768, 432), "9:16": (432, 768)}
 
     width, height = dims.get(ratio, dims["1:1"])
