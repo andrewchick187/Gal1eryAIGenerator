@@ -6,7 +6,7 @@ import requests
 import torch
 import gc
 from flask import Flask, render_template, request, jsonify, url_for
-from diffusers import StableDiffusionXLPipeline, EulerAncestralDiscreteScheduler
+from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline, EulerAncestralDiscreteScheduler
 
 # --- НАСТРОЙКИ ---
 IMAGE_FOLDER = 'outputs'
@@ -25,6 +25,7 @@ os.makedirs(MODELS_FOLDER, exist_ok=True)
 # Глобальные переменные состояния
 pipe = None
 current_model_name = None
+current_model_type = None  # Сохраняем тип загруженной модели (SDXL или SD 1.5)
 model_state = {
     'status': 'initializing',
     'progress': 0,
@@ -101,7 +102,7 @@ def download_file(url, filename, is_main_init=False, api_key=None):
         return False
 
 def load_model_into_vram(filename):
-    global pipe, model_state, current_model_name
+    global pipe, model_state, current_model_name, current_model_type
     
     filepath = os.path.join(MODELS_FOLDER, filename)
     if not os.path.exists(filepath):
@@ -111,7 +112,7 @@ def load_model_into_vram(filename):
 
     model_state['status'] = 'loading'
     model_state['progress'] = 100
-    model_state['message'] = f'Загрузка SDXL модели {filename} в VRAM...'
+    model_state['message'] = f'Определение типа и загрузка модели {filename} в VRAM...'
     
     try:
         if pipe is not None:
@@ -121,13 +122,38 @@ def load_model_into_vram(filename):
                 torch.cuda.empty_cache()
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
+        dtype = torch.float16 if device == "cuda" else torch.float32
         
-        # Строгая привязка к архитектуре SDXL
-        temp_pipe = StableDiffusionXLPipeline.from_single_file(
-            filepath,
-            torch_dtype=torch.float16 if device == "cuda" else torch.float32,
-            use_safetensors=True
-        )
+        # Эвристика по размеру файла: SDXL обычно весит больше 4.5 ГБ
+        file_size = os.path.getsize(filepath)
+        is_probably_sdxl = file_size > 4.5 * 1024 * 1024 * 1024
+
+        def try_load_sdxl():
+            return StableDiffusionXLPipeline.from_single_file(
+                filepath, torch_dtype=dtype, use_safetensors=True
+            ), "SDXL"
+
+        def try_load_sd15():
+            return StableDiffusionPipeline.from_single_file(
+                filepath, torch_dtype=dtype, use_safetensors=True
+            ), "SD 1.5 / Стандартная"
+
+        temp_pipe = None
+        loaded_type = ""
+
+        if is_probably_sdxl:
+            try:
+                temp_pipe, loaded_type = try_load_sdxl()
+            except Exception as e1:
+                print(f"Не удалось загрузить как SDXL ({e1}), пробуем как SD 1.5...")
+                temp_pipe, loaded_type = try_load_sd15()
+        else:
+            try:
+                temp_pipe, loaded_type = try_load_sd15()
+            except Exception as e1:
+                print(f"Не удалось загрузить как SD 1.5 ({e1}), пробуем как SDXL...")
+                temp_pipe, loaded_type = try_load_sdxl()
+
         temp_pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(temp_pipe.scheduler.config)
         temp_pipe.to(device)
         
@@ -136,12 +162,13 @@ def load_model_into_vram(filename):
             
         pipe = temp_pipe
         current_model_name = filename
+        current_model_type = loaded_type
         model_state['status'] = 'ready'
-        model_state['message'] = f'Модель SDXL {filename} готова!'
+        model_state['message'] = f'Модель [{loaded_type}] готова!'
         return True
     except Exception as e:
         model_state['status'] = 'error'
-        model_state['message'] = f'Ошибка загрузки (убедитесь, что это SDXL): {str(e)}'
+        model_state['message'] = f'Ошибка загрузки модели: {str(e)}'
         return False
 
 def startup_check():
@@ -188,7 +215,8 @@ def generator_page():
 def get_status():
     return jsonify({
         'state': model_state,
-        'current_model': current_model_name
+        'current_model': current_model_name,
+        'current_model_type': current_model_type
     })
 
 # --- API МЕНЕДЖЕРА МОДЕЛЕЙ ---
@@ -260,8 +288,14 @@ def generate_art():
     if not user_prompt:
         return jsonify({'success': False, 'error': 'Промпт пустой'}), 400
 
-    dims = {"1:1": (1024, 1024), "16:9": (1216, 680), "9:16": (832, 1216)}
-    width, height = dims.get(ratio, (832, 1216))
+    # Разные базовые разрешения в зависимости от архитектуры модели
+    if current_model_type == "SDXL":
+        dims = {"1:1": (1024, 1024), "16:9": (1216, 680), "9:16": (832, 1216)}
+    else:
+        # Для SD 1.5 и подобных базовое разрешение 512x512
+        dims = {"1:1": (512, 512), "16:9": (768, 432), "9:16": (432, 768)}
+
+    width, height = dims.get(ratio, dims["1:1"])
 
     full_prompt = f"masterpiece, best quality, {style}, {user_prompt}"
     final_negative = f"{DEFAULT_NEGATIVE}, {user_negative}" if user_negative else DEFAULT_NEGATIVE
