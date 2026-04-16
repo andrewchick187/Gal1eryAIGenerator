@@ -5,8 +5,14 @@ import time
 import requests
 import torch
 import gc
+import json
 from flask import Flask, render_template, request, jsonify, url_for
-from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline, EulerAncestralDiscreteScheduler
+from diffusers import (
+    StableDiffusionPipeline, 
+    StableDiffusionXLPipeline, 
+    StableDiffusion3Pipeline, 
+    EulerAncestralDiscreteScheduler
+)
 
 # --- НАСТРОЙКИ ---
 IMAGE_FOLDER = 'outputs'
@@ -35,6 +41,31 @@ model_state = {
 downloads_state = {}
 
 # --- ФУНКЦИИ МОДЕЛЕЙ И ЗАГРУЗКИ ---
+
+def save_model_meta(filename, model_type):
+    if model_type == 'auto': return
+    meta_path = os.path.join(MODELS_FOLDER, 'meta.json')
+    meta = {}
+    if os.path.exists(meta_path):
+        try:
+            with open(meta_path, 'r', encoding='utf-8') as f:
+                meta = json.load(f)
+        except Exception:
+            pass
+    meta[filename] = model_type
+    with open(meta_path, 'w', encoding='utf-8') as f:
+        json.dump(meta, f)
+
+def get_model_meta(filename):
+    meta_path = os.path.join(MODELS_FOLDER, 'meta.json')
+    if os.path.exists(meta_path):
+        try:
+            with open(meta_path, 'r', encoding='utf-8') as f:
+                meta = json.load(f)
+            return meta.get(filename, 'auto')
+        except Exception:
+            pass
+    return 'auto'
 
 def download_file(url, filename, is_main_init=False, api_key=None):
     filepath = os.path.join(MODELS_FOLDER, filename)
@@ -122,14 +153,57 @@ def load_model_into_vram(filename):
                 torch.cuda.empty_cache()
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        dtype = torch.float16 if device == "cuda" else torch.float32
         
-        file_size = os.path.getsize(filepath)
-        is_probably_sdxl = file_size > 4.5 * 1024 * 1024 * 1024
+        # SD 3.5 требует bfloat16 для стабильной работы, если поддерживается картой
+        if device == "cuda" and torch.cuda.is_bf16_supported():
+            dtype = torch.bfloat16
+        else:
+            dtype = torch.float16 if device == "cuda" else torch.float32
+        
+        # Сначала проверяем, не задал ли пользователь тип вручную при загрузке
+        explicit_type = get_model_meta(filename)
+        
+        is_probably_sd3 = False
+        is_probably_sdxl = False
+        is_probably_sd15 = False
+        
+        if explicit_type == 'sd3':
+            is_probably_sd3 = True
+        elif explicit_type == 'sdxl':
+            is_probably_sdxl = True
+        elif explicit_type == 'sd15':
+            is_probably_sd15 = True
+        else:
+            # Эвристика определения модели, если тип "auto"
+            file_size = os.path.getsize(filepath)
+            filename_lower = filename.lower()
+            is_probably_sd3 = "sd3" in filename_lower or "3.5" in filename_lower
+            is_probably_sdxl = file_size > 4.5 * 1024 * 1024 * 1024 and not is_probably_sd3
+
+        def try_load_sd3():
+            try:
+                from diffusers import BitsAndBytesConfig
+                nf4_config = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_compute_dtype=torch.bfloat16
+                )
+                return StableDiffusion3Pipeline.from_single_file(
+                    filepath,
+                    torch_dtype=torch.bfloat16,
+                    quantization_config=nf4_config,
+                    use_safetensors=True
+                ), "SD 3.5 (4-bit)"
+            except (ImportError, Exception) as e:
+                print(f"NF4 квантование недоступно ({e}), загрузка SD 3.5 в стандартном режиме...")
+                return StableDiffusion3Pipeline.from_single_file(
+                    filepath,
+                    torch_dtype=dtype,
+                    use_safetensors=True
+                ), "SD 3.5"
 
         def try_load_sdxl():
             try:
-                # Явное указание базового конфига SDXL исправляет ошибку с отсутствующим CLIPTextModel
                 return StableDiffusionXLPipeline.from_single_file(
                     filepath, 
                     torch_dtype=dtype, 
@@ -137,14 +211,12 @@ def load_model_into_vram(filename):
                     config="stabilityai/stable-diffusion-xl-base-1.0"
                 ), "SDXL"
             except TypeError:
-                # Fallback для старых версий diffusers, где аргумент config не поддерживается
                 return StableDiffusionXLPipeline.from_single_file(
                     filepath, torch_dtype=dtype, use_safetensors=True
                 ), "SDXL"
 
         def try_load_sd15():
             try:
-                # Явное указание базового конфига SD 1.5
                 return StableDiffusionPipeline.from_single_file(
                     filepath, 
                     torch_dtype=dtype, 
@@ -156,24 +228,34 @@ def load_model_into_vram(filename):
                     filepath, torch_dtype=dtype, use_safetensors=True
                 ), "SD 1.5 / Стандартная"
 
+        # Формируем очередь попыток загрузки
+        if is_probably_sd3:
+            attempts = [try_load_sd3, try_load_sdxl, try_load_sd15]
+        elif is_probably_sdxl:
+            attempts = [try_load_sdxl, try_load_sd3, try_load_sd15]
+        elif is_probably_sd15:
+            attempts = [try_load_sd15, try_load_sdxl, try_load_sd3]
+        else:
+            attempts = [try_load_sd15, try_load_sdxl, try_load_sd3]
+
         temp_pipe = None
         loaded_type = ""
 
-        if is_probably_sdxl:
+        for attempt_func in attempts:
             try:
-                temp_pipe, loaded_type = try_load_sdxl()
-            except Exception as e1:
-                print(f"Не удалось загрузить как SDXL ({e1}), пробуем как SD 1.5...")
-                temp_pipe, loaded_type = try_load_sd15()
-        else:
-            try:
-                temp_pipe, loaded_type = try_load_sd15()
-            except Exception as e1:
-                print(f"Не удалось загрузить как SD 1.5 ({e1}), пробуем как SDXL...")
-                temp_pipe, loaded_type = try_load_sdxl()
+                temp_pipe, loaded_type = attempt_func()
+                break # Если загрузка прошла успешно, прерываем цикл
+            except Exception as e:
+                print(f"Не удалось загрузить через {attempt_func.__name__}: {e}")
+                continue
 
-        # Настраиваем сэмплер
-        temp_pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(temp_pipe.scheduler.config)
+        if temp_pipe is None:
+            raise Exception("Не удалось распознать архитектуру модели (SD 1.5, SDXL или SD 3.5)")
+
+        # Замена шедулера только для старых моделей (SD3 использует FlowMatch, его менять не нужно)
+        if "SD 3" not in loaded_type:
+            temp_pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(temp_pipe.scheduler.config)
+            
         temp_pipe.to(device)
         
         if device == "cuda":
@@ -251,12 +333,16 @@ def api_download_model():
     filename = data.get('filename')
     api_key = data.get('api_key')
     is_init = data.get('is_init', False)
+    model_type = data.get('model_type', 'auto')
     
     if not url or not filename:
         return jsonify({'success': False, 'error': 'Укажите URL и имя файла'}), 400
         
     if not filename.endswith('.safetensors'):
         filename += '.safetensors'
+        
+    # Сохраняем явно указанный тип модели
+    save_model_meta(filename, model_type)
         
     if is_init:
         model_state['status'] = 'downloading'
@@ -307,7 +393,8 @@ def generate_art():
     if not user_prompt:
         return jsonify({'success': False, 'error': 'Промпт пустой'}), 400
 
-    if current_model_type == "SDXL":
+    # Разрешения. SD 3.5 и SDXL отлично работают с 1024x1024
+    if current_model_type and ("SD 3" in current_model_type or current_model_type == "SDXL"):
         dims = {"1:1": (1024, 1024), "16:9": (1216, 680), "9:16": (832, 1216)}
     else:
         dims = {"1:1": (512, 512), "16:9": (768, 432), "9:16": (432, 768)}
@@ -322,17 +409,24 @@ def generate_art():
         device = "cuda" if torch.cuda.is_available() else "cpu"
         generator = torch.Generator(device=device).manual_seed(seed)
 
+    # Параметры генерации
+    kwargs = {
+        "prompt": full_prompt,
+        "negative_prompt": final_negative,
+        "num_inference_steps": steps,
+        "guidance_scale": guidance_scale,
+        "width": width,
+        "height": height,
+        "generator": generator
+    }
+
+    # Специфичный параметр для SD 3 / 3.5 для лучшего понимания текста
+    if current_model_type and "SD 3" in current_model_type:
+        kwargs["max_sequence_length"] = 512
+
     try:
         with torch.inference_mode():
-            image = pipe(
-                prompt=full_prompt,
-                negative_prompt=final_negative,
-                num_inference_steps=steps,
-                guidance_scale=guidance_scale,
-                width=width,
-                height=height,
-                generator=generator
-            ).images[0]
+            image = pipe(**kwargs).images[0]
 
         timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"gen_{timestamp}.png"
