@@ -92,22 +92,58 @@
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-6" id="statusMessage">Подключение...</p>
             
             <div id="setupContainer" class="hidden w-full text-left">
-                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-3 text-center">Рекомендуемые базовые модели:</p>
-                <div class="space-y-3">
-                    <button onclick="startInitDownload('https://civitai.com/api/download/models/143906?type=Model&format=SafeTensor&size=pruned&fp=fp16', 'epiCRealism.safetensors', 'sd15')" class="w-full p-4 bg-white/60 dark:bg-black/40 border border-purple-500/40 rounded-xl hover:scale-[1.02] transition-transform text-sm flex justify-between items-center shadow-sm">
-                        <span class="font-bold text-purple-600 dark:text-purple-400">epiCRealism</span>
-                        <span class="text-xs text-gray-500 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-md">Реализм (SD 1.5)</span>
+                
+                <div id="setupChoices" class="space-y-4">
+                    <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 text-center">Для первого запуска необходимо загрузить модель нейросети. Что выберем?</p>
+                    <button onclick="document.getElementById('setupChoices').classList.add('hidden'); document.getElementById('recommendedModels').classList.remove('hidden');" class="w-full p-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl transition-all hover:scale-[1.02] text-sm font-bold flex justify-center items-center shadow-lg">
+                        Скачать рекомендованную модель
                     </button>
-                    <button onclick="startInitDownload('https://civitai.com/api/download/models/354657?type=Model&format=SafeTensor&size=pruned&fp=fp16', 'JuggernautXL_Realism.safetensors', 'sdxl')" class="w-full p-4 bg-white/60 dark:bg-black/40 border border-blue-500/40 rounded-xl hover:scale-[1.02] transition-transform text-sm flex justify-between items-center shadow-sm">
-                        <span class="font-bold text-blue-600 dark:text-blue-400">Juggernaut XL v9</span>
-                        <span class="text-xs text-gray-500 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-md">Фотореализм (SDXL)</span>
-                    </button>
-                    <button onclick="startInitDownload('https://civitai.com/api/download/models/128713?type=Model&format=SafeTensor&size=pruned&fp=fp16', 'DreamShaperXL_Art.safetensors', 'sdxl')" class="w-full p-4 bg-white/60 dark:bg-black/40 border border-green-500/40 rounded-xl hover:scale-[1.02] transition-transform text-sm flex justify-between items-center shadow-sm">
-                        <span class="font-bold text-green-600 dark:text-green-400">DreamShaper XL</span>
-                        <span class="text-xs text-gray-500 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-md">Универсальная (SDXL)</span>
+                    <button onclick="document.getElementById('setupChoices').classList.add('hidden'); document.getElementById('customModelSetup').classList.remove('hidden');" class="w-full p-4 bg-white/60 dark:bg-black/40 border border-gray-300 dark:border-gray-600 rounded-xl transition-all hover:scale-[1.02] text-sm font-bold flex justify-center items-center shadow-sm">
+                        Скачать другую по своей ссылке
                     </button>
                 </div>
-                <p class="text-[10px] text-gray-400 mt-4 text-center">Вы также можете скачать любую другую модель позже через "Менеджер Моделей".</p>
+
+                <div id="recommendedModels" class="hidden">
+                    <button onclick="document.getElementById('recommendedModels').classList.add('hidden'); document.getElementById('setupChoices').classList.remove('hidden');" class="text-xs text-purple-600 dark:text-purple-400 mb-4 flex items-center gap-1 hover:underline font-semibold">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                        Назад к выбору
+                    </button>
+                    <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-3 text-center">Выберите базовую модель:</p>
+                    <div class="space-y-3">
+                        <button onclick="startInitDownload('https://civitai.com/api/download/models/143906?type=Model&format=SafeTensor&size=pruned&fp=fp16', 'epiCRealism.safetensors', 'sd15')" class="w-full p-4 bg-white/60 dark:bg-black/40 border border-purple-500/40 rounded-xl hover:scale-[1.02] transition-transform text-sm flex justify-between items-center shadow-sm">
+                            <span class="font-bold text-purple-600 dark:text-purple-400">epiCRealism</span>
+                            <span class="text-xs text-gray-500 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-md">Реализм (SD 1.5)</span>
+                        </button>
+                        <button onclick="startInitDownload('https://civitai.com/api/download/models/354657?type=Model&format=SafeTensor&size=pruned&fp=fp16', 'JuggernautXL_Realism.safetensors', 'sdxl')" class="w-full p-4 bg-white/60 dark:bg-black/40 border border-blue-500/40 rounded-xl hover:scale-[1.02] transition-transform text-sm flex justify-between items-center shadow-sm">
+                            <span class="font-bold text-blue-600 dark:text-blue-400">Juggernaut XL v9</span>
+                            <span class="text-xs text-gray-500 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-md">Фотореализм (SDXL)</span>
+                        </button>
+                        <button onclick="startInitDownload('https://civitai.com/api/download/models/128713?type=Model&format=SafeTensor&size=pruned&fp=fp16', 'DreamShaperXL_Art.safetensors', 'sdxl')" class="w-full p-4 bg-white/60 dark:bg-black/40 border border-green-500/40 rounded-xl hover:scale-[1.02] transition-transform text-sm flex justify-between items-center shadow-sm">
+                            <span class="font-bold text-green-600 dark:text-green-400">DreamShaper XL</span>
+                            <span class="text-xs text-gray-500 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-md">Универсальная (SDXL)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="customModelSetup" class="hidden">
+                    <button onclick="document.getElementById('customModelSetup').classList.add('hidden'); document.getElementById('setupChoices').classList.remove('hidden');" class="text-xs text-purple-600 dark:text-purple-400 mb-4 flex items-center gap-1 hover:underline font-semibold">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                        Назад к выбору
+                    </button>
+                    <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-3 text-center">Укажите параметры модели:</p>
+                    <input type="text" id="initCustomUrl" placeholder="URL скачивания (CivitAI / HuggingFace)" class="w-full p-3 mb-3 bg-white/50 dark:bg-black/30 border border-white/40 dark:border-gray-700/50 rounded-xl text-sm focus:outline-none backdrop-blur-sm">
+                    <input type="text" id="initCustomFilename" placeholder="Имя файла (напр. MyModel.safetensors)" class="w-full p-3 mb-3 bg-white/50 dark:bg-black/30 border border-white/40 dark:border-gray-700/50 rounded-xl text-sm focus:outline-none backdrop-blur-sm">
+                    <select id="initCustomType" class="w-full p-3 mb-3 bg-white/50 dark:bg-black/30 border border-white/40 dark:border-gray-700/50 rounded-xl text-sm focus:outline-none backdrop-blur-sm cursor-pointer">
+                        <option value="auto">✨ Автоопределение типа (по весу)</option>
+                        <option value="sdxl">🖼️ SDXL (Stable Diffusion XL)</option>
+                        <option value="sd3">🚀 SD 3.5 / SD 3</option>
+                        <option value="sd15">🎨 SD 1.5 (Стандартная)</option>
+                    </select>
+                    <button onclick="startCustomInitDownload()" class="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-sm font-bold transition-all shadow-md">
+                        Начать загрузку
+                    </button>
+                </div>
+
             </div>
 
             <div id="progressContainer" class="hidden w-full bg-gray-200 dark:bg-gray-800 rounded-full h-3 mb-2 overflow-hidden mt-4">
@@ -343,6 +379,22 @@
             });
         }
 
+        // Запуск загрузки своей модели из стартового меню
+        function startCustomInitDownload() {
+            const url = document.getElementById('initCustomUrl').value.trim();
+            let filename = document.getElementById('initCustomFilename').value.trim();
+            const type = document.getElementById('initCustomType').value;
+            
+            if(!url || !filename) {
+                alert("Пожалуйста, заполните URL и имя файла.");
+                return;
+            }
+            if (!filename.endsWith('.safetensors')) {
+                filename += '.safetensors';
+            }
+            startInitDownload(url, filename, type);
+        }
+
         // --- ЛОГИКА СТАТУСА СЕРВЕРА ---
         async function checkServerStatus() {
             try {
@@ -367,6 +419,12 @@
                 if (data.status === 'awaiting_setup') {
                     statusIcon.classList.add('hidden');
                     setupContainer.classList.remove('hidden');
+                    
+                    // Сбрасываем вкладки, чтобы при ошибке или перезагрузке показывался главный выбор
+                    document.getElementById('setupChoices').classList.remove('hidden');
+                    document.getElementById('recommendedModels').classList.add('hidden');
+                    document.getElementById('customModelSetup').classList.add('hidden');
+
                     statusTitle.textContent = "Добро пожаловать!";
                     progressContainer.classList.add('hidden');
                     progressText.classList.add('hidden');
