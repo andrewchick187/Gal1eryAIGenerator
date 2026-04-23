@@ -277,26 +277,38 @@
                         </div>
                     </div>
 
-                    <div class="space-y-4 pt-2">
-                        <div>
-                            <div class="flex justify-between mb-1">
-                                <label class="text-xs font-semibold text-gray-700 dark:text-gray-300">Шаги (Steps)</label>
-                                <span id="stepsValue" class="text-xs font-bold text-purple-600 dark:text-purple-400">28</span>
-                            </div>
-                            <input type="range" id="stepsInput" min="1" max="50" value="28" oninput="document.getElementById('stepsValue').innerText = this.value">
-                        </div>
+                    <div class="pt-2 border-t border-gray-300/50 dark:border-gray-700/50 mt-4">
+                        <button type="button" onclick="toggleAdvancedSettings()" class="flex items-center justify-between w-full text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors group">
+                            <span class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-500 group-hover:text-purple-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                Дополнительные настройки
+                            </span>
+                            <svg id="advancedArrow" class="w-4 h-4 transform transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        
+                        <div id="advancedSettingsContainer" class="transition-all duration-300 ease-in-out overflow-hidden max-h-0 opacity-0">
+                            <div class="space-y-4 pt-4 pb-2">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <label class="text-xs font-semibold text-gray-700 dark:text-gray-300">Шаги (Steps)</label>
+                                        <span id="stepsValue" class="text-xs font-bold text-purple-600 dark:text-purple-400">28</span>
+                                    </div>
+                                    <input type="range" id="stepsInput" min="1" max="50" value="28" oninput="document.getElementById('stepsValue').innerText = this.value">
+                                </div>
 
-                        <div>
-                            <div class="flex justify-between mb-1">
-                                <label class="text-xs font-semibold text-gray-700 dark:text-gray-300">CFG Scale</label>
-                                <span id="cfgValue" class="text-xs font-bold text-purple-600 dark:text-purple-400">7.0</span>
-                            </div>
-                            <input type="range" id="cfgInput" min="1" max="20" step="0.5" value="7.0" oninput="document.getElementById('cfgValue').innerText = this.value">
-                        </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <label class="text-xs font-semibold text-gray-700 dark:text-gray-300">CFG Scale</label>
+                                        <span id="cfgValue" class="text-xs font-bold text-purple-600 dark:text-purple-400">7.0</span>
+                                    </div>
+                                    <input type="range" id="cfgInput" min="1" max="20" step="0.5" value="7.0" oninput="document.getElementById('cfgValue').innerText = this.value">
+                                </div>
 
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Seed (-1 для случайного)</label>
-                            <input type="number" id="seedInput" value="-1" class="w-full p-2 bg-white/50 dark:bg-black/30 border border-white/40 dark:border-gray-700/50 rounded-xl text-sm focus:ring-2 focus:ring-purple-500/50 focus:outline-none backdrop-blur-sm">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Seed (-1 для случайного)</label>
+                                    <input type="number" id="seedInput" value="-1" class="w-full p-2 bg-white/50 dark:bg-black/30 border border-white/40 dark:border-gray-700/50 rounded-xl text-sm focus:ring-2 focus:ring-purple-500/50 focus:outline-none backdrop-blur-sm">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -314,7 +326,7 @@
                 
                 <div id="placeholder" class="text-center px-6 transition-all duration-500">
                     <div class="w-24 h-24 bg-white/40 dark:bg-black/20 backdrop-blur-md rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner border border-white/50 dark:border-white/5">
-                        <svg class="w-10 h-10 text-purple-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <svg class="w-10 h-10 text-purple-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2v12a2 2 0 002 2z"></path></svg>
                     </div>
                     <p class="text-gray-500 dark:text-gray-400 font-medium">Холст пуст</p>
                 </div>
@@ -368,6 +380,24 @@
         let lastServerStatus = '';
         let isInitDownloadStarting = false;
         let currentModelsStr = '';
+
+        // --- ЛОГИКА ДОПОЛНИТЕЛЬНЫХ НАСТРОЕК ---
+        function toggleAdvancedSettings() {
+            const container = document.getElementById('advancedSettingsContainer');
+            const arrow = document.getElementById('advancedArrow');
+            
+            if (container.classList.contains('max-h-0')) {
+                // Раскрываем
+                container.classList.remove('max-h-0', 'opacity-0');
+                container.classList.add('max-h-96', 'opacity-100');
+                arrow.classList.add('rotate-180');
+            } else {
+                // Скрываем
+                container.classList.remove('max-h-96', 'opacity-100');
+                container.classList.add('max-h-0', 'opacity-0');
+                arrow.classList.remove('rotate-180');
+            }
+        }
 
         // --- ИНИЦИАЛИЗАЦИЯ И ВЫБОР МОДЕЛИ ---
         async function startInitDownload(url, filename, type='auto') {
