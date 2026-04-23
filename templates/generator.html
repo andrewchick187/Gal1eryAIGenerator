@@ -664,7 +664,6 @@
         const transformContainer = document.getElementById('imageTransformContainer');
         const zoomPercentageText = document.getElementById('zoomPercentage');
 
-        // Переменные состояния для зума и перетаскивания
         let currentZoom = 1;
         let isDragging = false;
         let startX, startY;
@@ -704,17 +703,14 @@
             updateImageTransform(); 
         }
 
-        // Управление колесиком мыши (Плавный зум)
         transformContainer.addEventListener('wheel', (e) => {
-            e.preventDefault(); // Останавливаем стандартную прокрутку страницы
+            e.preventDefault(); 
             const zoomDelta = e.deltaY * -0.002;
             currentZoom = Math.min(Math.max(0.2, currentZoom + zoomDelta), 10);
             updateImageTransform();
         });
 
-        // Управление перетаскиванием (Pan)
         transformContainer.addEventListener('mousedown', (e) => {
-            // Если кликнули на кнопку, игнорируем перетаскивание
             if (e.target.closest('button') || e.target.closest('a')) return;
             
             isDragging = true;
@@ -733,7 +729,6 @@
             isDragging = false;
         });
         
-        // Предотвращение показа контекстного меню при перетаскивании
         transformContainer.addEventListener('contextmenu', e => e.preventDefault());
 
 
