@@ -178,7 +178,7 @@
             <div class="mb-6">
                 <label class="block text-sm font-semibold mb-2">Активная модель</label>
                 <div class="flex gap-2">
-                    <select id="modelSelect" class="flex-grow p-3 bg-white/50 dark:bg-black/30 border border-white/40 dark:border-gray-700/50 rounded-xl text-sm focus:outline-none backdrop-blur-sm appearance-none">
+                    <select id="modelSelect" class="flex-grow p-3 bg-white/50 dark:bg-black/30 border border-white/40 dark:border-gray-700/50 rounded-xl text-sm focus:outline-none backdrop-blur-sm appearance-none cursor-pointer">
                         <option>Загрузка списка...</option>
                     </select>
                     <button onclick="loadSelectedModel()" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-semibold transition-all shadow-md">
@@ -353,7 +353,6 @@
         const btnText = document.getElementById('btnText');
         const mainActiveModelText = document.getElementById('mainActiveModelText');
 
-        // Элементы статуса
         const statusOverlay = document.getElementById('serverStatusOverlay');
         const statusTitle = document.getElementById('statusTitle');
         const statusMessage = document.getElementById('statusMessage');
@@ -364,9 +363,15 @@
         const setupContainer = document.getElementById('setupContainer');
 
         let isServerReady = false;
+        
+        // --- ПЕРЕМЕННЫЕ ДЛЯ ФИКСА UI БАГОВ ---
+        let lastServerStatus = '';
+        let isInitDownloadStarting = false;
+        let currentModelsStr = '';
 
         // --- ИНИЦИАЛИЗАЦИЯ И ВЫБОР МОДЕЛИ ---
         async function startInitDownload(url, filename, type='auto') {
+            isInitDownloadStarting = true; // Блокируем сброс вкладок пока не обновится статус на сервере
             setupContainer.classList.add('hidden');
             statusIcon.classList.remove('hidden');
             statusTitle.textContent = "Запуск скачивания...";
@@ -416,18 +421,28 @@
                     btnText.textContent = 'Ожидание сервера...';
                 }
 
-                if (data.status === 'awaiting_setup') {
-                    statusIcon.classList.add('hidden');
-                    setupContainer.classList.remove('hidden');
-                    
-                    // Сбрасываем вкладки, чтобы при ошибке или перезагрузке показывался главный выбор
-                    document.getElementById('setupChoices').classList.remove('hidden');
-                    document.getElementById('recommendedModels').classList.add('hidden');
-                    document.getElementById('customModelSetup').classList.add('hidden');
+                // Снимаем блокировку UI, если сервер успешно начал обработку
+                if (data.status === 'downloading' || data.status === 'loading') {
+                    isInitDownloadStarting = false;
+                }
 
-                    statusTitle.textContent = "Добро пожаловать!";
-                    progressContainer.classList.add('hidden');
-                    progressText.classList.add('hidden');
+                if (data.status === 'awaiting_setup') {
+                    // Если мы нажали старт скачивания, но сервер еще секунду-две отдает старый статус - игнорируем
+                    if (!isInitDownloadStarting) {
+                        statusIcon.classList.add('hidden');
+                        setupContainer.classList.remove('hidden');
+                        
+                        // ИСПРАВЛЕНИЕ: Сбрасываем вкладки ТОЛЬКО при первой смене статуса на awaiting_setup
+                        if (lastServerStatus !== 'awaiting_setup') {
+                            document.getElementById('setupChoices').classList.remove('hidden');
+                            document.getElementById('recommendedModels').classList.add('hidden');
+                            document.getElementById('customModelSetup').classList.add('hidden');
+                        }
+
+                        statusTitle.textContent = "Добро пожаловать!";
+                        progressContainer.classList.add('hidden');
+                        progressText.classList.add('hidden');
+                    }
                 }
                 else if (data.status === 'downloading') {
                     statusIcon.classList.remove('hidden');
@@ -463,6 +478,7 @@
                     progressText.classList.add('hidden');
                 }
 
+                lastServerStatus = data.status;
                 setTimeout(checkServerStatus, 2000);
             } catch (err) {
                 console.error("Ошибка проверки статуса:", err);
@@ -491,16 +507,32 @@
             try {
                 const res = await fetch('/api/models');
                 const data = await res.json();
-                const select = document.getElementById('modelSelect');
-                select.innerHTML = '';
                 
-                data.models.forEach(model => {
-                    const option = document.createElement('option');
-                    option.value = model;
-                    option.textContent = model;
-                    if (model === data.current) option.selected = true;
-                    select.appendChild(option);
-                });
+                const stateStr = JSON.stringify({models: data.models, current: data.current});
+                
+                // ИСПРАВЛЕНИЕ: Перерисовываем выпадающий список только если данные реально изменились, 
+                // иначе при постоянном опросе он будет автоматически закрываться.
+                if (currentModelsStr !== stateStr) {
+                    const select = document.getElementById('modelSelect');
+                    const currentVal = select.value;
+                    
+                    select.innerHTML = '';
+                    
+                    data.models.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model;
+                        option.textContent = model;
+                        if (model === data.current) option.selected = true;
+                        select.appendChild(option);
+                    });
+
+                    // Сохраняем временный выбор пользователя, чтобы не сбросилось
+                    if (currentVal && data.models.includes(currentVal) && currentVal !== data.current) {
+                        select.value = currentVal;
+                    }
+                    
+                    currentModelsStr = stateStr;
+                }
                 
                 document.getElementById('currentModelText').innerHTML = `Текущая: <span class="font-bold text-purple-600 dark:text-purple-400">${data.current || 'Не загружена'}</span>`;
             } catch (err) {
