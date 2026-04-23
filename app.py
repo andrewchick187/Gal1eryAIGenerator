@@ -179,18 +179,18 @@ def load_model_into_vram(filename):
             is_probably_sdxl = file_size > 4.5 * 1024 * 1024 * 1024 and not is_probably_sd3
 
         def try_load_sd3():
-            # Для загрузки чекпоинтов SD3.5 из ComfyUI (особенно FP8) в Diffusers 
-            # обязательно нужен явный конфиг, иначе он не распознает ключи слоев.
+            # Попытка 1: С явным конфигом SD 3.5
             try:
-                print("Пробуем загрузить как SD 3.5 Medium...")
+                print("Пробуем загрузить как SD 3.5 Medium (с конфигом)...")
                 return StableDiffusion3Pipeline.from_single_file(
                     filepath,
                     torch_dtype=dtype,
                     use_safetensors=True,
                     config="stabilityai/stable-diffusion-3.5-medium"
                 ), "SD 3.5"
-            except Exception as e:
-                print(f"Загрузка с конфигом 3.5 не удалась ({e}). Пробуем стандартный метод...")
+            except Exception as e1:
+                print(f"Загрузка с конфигом 3.5 не удалась ({e1}). Пробуем стандартный метод...")
+                # Попытка 2: Без явного конфига (автоопределение)
                 return StableDiffusion3Pipeline.from_single_file(
                     filepath,
                     torch_dtype=dtype,
@@ -205,7 +205,7 @@ def load_model_into_vram(filename):
                     use_safetensors=True,
                     config="stabilityai/stable-diffusion-xl-base-1.0"
                 ), "SDXL"
-            except TypeError:
+            except Exception:
                 return StableDiffusionXLPipeline.from_single_file(
                     filepath, torch_dtype=dtype, use_safetensors=True
                 ), "SDXL"
@@ -218,7 +218,7 @@ def load_model_into_vram(filename):
                     use_safetensors=True,
                     config="runwayml/stable-diffusion-v1-5"
                 ), "SD 1.5 / Стандартная"
-            except TypeError:
+            except Exception:
                 return StableDiffusionPipeline.from_single_file(
                     filepath, torch_dtype=dtype, use_safetensors=True
                 ), "SD 1.5 / Стандартная"
@@ -234,17 +234,26 @@ def load_model_into_vram(filename):
 
         temp_pipe = None
         loaded_type = ""
+        error_logs = []
 
         for attempt_func in attempts:
             try:
                 temp_pipe, loaded_type = attempt_func()
                 break
             except Exception as e:
+                error_str = str(e).split('\n')[0] # Берем только первую строчку ошибки для компактности
+                error_logs.append(f"{attempt_func.__name__}: {error_str}")
                 print(f"Не удалось загрузить через {attempt_func.__name__}: {e}")
                 continue
 
         if temp_pipe is None:
-            raise Exception("Не удалось распознать архитектуру модели (SD 1.5, SDXL или SD 3.5). Убедитесь, что файл не поврежден.")
+            # Улучшенная диагностика ошибок для пользователя
+            filename_lower = filename.lower()
+            if "fp8" in filename_lower or "scaled" in filename_lower:
+                raise Exception("Это FP8-модель формата ComfyUI. Текущая библиотека не поддерживает этот специфичный формат. Скачайте официальную стандартную версию (FP16).")
+            else:
+                # Показываем реальную системную ошибку
+                raise Exception(f"Архитектура не распознана. Ошибка: {error_logs[0][:150]}...")
 
         if "SD 3" not in loaded_type:
             temp_pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(temp_pipe.scheduler.config)
@@ -262,7 +271,7 @@ def load_model_into_vram(filename):
         return True
     except Exception as e:
         model_state['status'] = 'error'
-        model_state['message'] = f'Ошибка загрузки модели: {str(e)}'
+        model_state['message'] = f'Ошибка: {str(e)}'
         return False
 
 def startup_check():
