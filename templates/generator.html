@@ -153,18 +153,33 @@
         </div>
     </div>
 
-    <div id="imageViewerModal" class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-md transition-all duration-300">
-        <button onclick="closeImageViewer()" class="absolute top-6 right-6 text-white/70 hover:text-white transition-colors bg-black/50 p-2 rounded-full">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-        </button>
-        <div class="relative max-w-7xl max-h-screen p-4 flex flex-col items-center">
-            <img id="fullSizeImage" src="" class="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl" alt="Full Image">
-            <div class="mt-6">
-                <a id="downloadImageBtn" href="#" download="generated_art.png" class="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-semibold transition-all shadow-lg flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    Скачать изображение
-                </a>
+    <div id="imageViewerModal" class="hidden fixed inset-0 z-[70] bg-black/95 backdrop-blur-md transition-all duration-300 overflow-hidden">
+        
+        <div class="absolute top-0 inset-x-0 p-4 md:p-6 flex justify-between items-start z-50 pointer-events-none">
+            <div class="flex gap-2 bg-white/10 p-1.5 md:p-2 rounded-2xl backdrop-blur-lg pointer-events-auto border border-white/10 shadow-2xl">
+                <button onclick="zoomOut()" class="text-white hover:text-purple-400 p-2 hover:bg-white/20 rounded-xl transition-colors" title="Уменьшить">
+                    <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path></svg>
+                </button>
+                <button onclick="resetZoom()" class="text-white px-2 md:px-4 py-2 hover:bg-white/20 rounded-xl font-bold text-xs md:text-sm transition-colors" id="zoomPercentage" title="Сбросить масштаб">100%</button>
+                <button onclick="zoomIn()" class="text-white hover:text-purple-400 p-2 hover:bg-white/20 rounded-xl transition-colors" title="Увеличить">
+                    <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path></svg>
+                </button>
             </div>
+            
+            <button onclick="closeImageViewer()" class="text-white/70 hover:text-white hover:bg-red-500/80 transition-colors bg-white/10 p-2 md:p-3 rounded-full pointer-events-auto border border-white/10 shadow-2xl backdrop-blur-lg" title="Закрыть">
+                <svg class="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div id="imageTransformContainer" class="absolute inset-0 flex items-center justify-center cursor-grab active:cursor-grabbing">
+            <img id="fullSizeImage" src="" class="max-w-[95vw] max-h-[90vh] object-contain shadow-2xl rounded-sm transition-transform duration-75 origin-center pointer-events-none select-none" draggable="false" alt="Full Image">
+        </div>
+
+        <div class="absolute bottom-6 md:bottom-10 inset-x-0 flex justify-center z-50 pointer-events-none">
+            <a id="downloadImageBtn" href="#" download="generated_art.png" class="pointer-events-auto px-6 py-3 md:px-8 md:py-4 bg-purple-600/90 hover:bg-purple-500 text-white rounded-full font-bold transition-all shadow-[0_10px_40px_rgba(147,51,234,0.5)] flex items-center gap-2 border border-purple-400/30 backdrop-blur-lg hover:scale-105 active:scale-95">
+                <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Скачать оригинал
+            </a>
         </div>
     </div>
 
@@ -375,33 +390,27 @@
         const setupContainer = document.getElementById('setupContainer');
 
         let isServerReady = false;
-        
-        // --- ПЕРЕМЕННЫЕ ДЛЯ ФИКСА UI БАГОВ ---
         let lastServerStatus = '';
         let isInitDownloadStarting = false;
         let currentModelsStr = '';
 
-        // --- ЛОГИКА ДОПОЛНИТЕЛЬНЫХ НАСТРОЕК ---
         function toggleAdvancedSettings() {
             const container = document.getElementById('advancedSettingsContainer');
             const arrow = document.getElementById('advancedArrow');
             
             if (container.classList.contains('max-h-0')) {
-                // Раскрываем
                 container.classList.remove('max-h-0', 'opacity-0');
                 container.classList.add('max-h-96', 'opacity-100');
                 arrow.classList.add('rotate-180');
             } else {
-                // Скрываем
                 container.classList.remove('max-h-96', 'opacity-100');
                 container.classList.add('max-h-0', 'opacity-0');
                 arrow.classList.remove('rotate-180');
             }
         }
 
-        // --- ИНИЦИАЛИЗАЦИЯ И ВЫБОР МОДЕЛИ ---
         async function startInitDownload(url, filename, type='auto') {
-            isInitDownloadStarting = true; // Блокируем сброс вкладок пока не обновится статус на сервере
+            isInitDownloadStarting = true;
             setupContainer.classList.add('hidden');
             statusIcon.classList.remove('hidden');
             statusTitle.textContent = "Запуск скачивания...";
@@ -414,7 +423,6 @@
             });
         }
 
-        // Запуск загрузки своей модели из стартового меню
         function startCustomInitDownload() {
             const url = document.getElementById('initCustomUrl').value.trim();
             let filename = document.getElementById('initCustomFilename').value.trim();
@@ -430,7 +438,6 @@
             startInitDownload(url, filename, type);
         }
 
-        // --- ЛОГИКА СТАТУСА СЕРВЕРА ---
         async function checkServerStatus() {
             try {
                 const res = await fetch('/status');
@@ -451,18 +458,15 @@
                     btnText.textContent = 'Ожидание сервера...';
                 }
 
-                // Снимаем блокировку UI, если сервер успешно начал обработку
                 if (data.status === 'downloading' || data.status === 'loading') {
                     isInitDownloadStarting = false;
                 }
 
                 if (data.status === 'awaiting_setup') {
-                    // Если мы нажали старт скачивания, но сервер еще секунду-две отдает старый статус - игнорируем
                     if (!isInitDownloadStarting) {
                         statusIcon.classList.add('hidden');
                         setupContainer.classList.remove('hidden');
                         
-                        // ИСПРАВЛЕНИЕ: Сбрасываем вкладки ТОЛЬКО при первой смене статуса на awaiting_setup
                         if (lastServerStatus !== 'awaiting_setup') {
                             document.getElementById('setupChoices').classList.remove('hidden');
                             document.getElementById('recommendedModels').classList.add('hidden');
@@ -540,8 +544,6 @@
                 
                 const stateStr = JSON.stringify({models: data.models, current: data.current});
                 
-                // ИСПРАВЛЕНИЕ: Перерисовываем выпадающий список только если данные реально изменились, 
-                // иначе при постоянном опросе он будет автоматически закрываться.
                 if (currentModelsStr !== stateStr) {
                     const select = document.getElementById('modelSelect');
                     const currentVal = select.value;
@@ -556,7 +558,6 @@
                         select.appendChild(option);
                     });
 
-                    // Сохраняем временный выбор пользователя, чтобы не сбросилось
                     if (currentVal && data.models.includes(currentVal) && currentVal !== data.current) {
                         select.value = currentVal;
                     }
@@ -656,21 +657,85 @@
             }
         }
 
-        // --- ДЕТАЛЬНЫЙ ПРОСМОТР ИЗОБРАЖЕНИЯ ---
+        // --- ДЕТАЛЬНЫЙ ПРОСМОТР ИЗОБРАЖЕНИЯ (С ЗУМОМ И ПЕРЕТАСКИВАНИЕМ) ---
         const viewerModal = document.getElementById('imageViewerModal');
         const fullSizeImage = document.getElementById('fullSizeImage');
         const downloadImageBtn = document.getElementById('downloadImageBtn');
+        const transformContainer = document.getElementById('imageTransformContainer');
+        const zoomPercentageText = document.getElementById('zoomPercentage');
+
+        // Переменные состояния для зума и перетаскивания
+        let currentZoom = 1;
+        let isDragging = false;
+        let startX, startY;
+        let translateX = 0, translateY = 0;
 
         function openImageViewer() {
             if (!generatedImage.src) return;
             fullSizeImage.src = generatedImage.src;
             downloadImageBtn.href = generatedImage.src;
+            resetZoom();
             viewerModal.classList.remove('hidden');
         }
 
         function closeImageViewer() {
             viewerModal.classList.add('hidden');
         }
+
+        function updateImageTransform() {
+            fullSizeImage.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
+            zoomPercentageText.textContent = `${Math.round(currentZoom * 100)}%`;
+        }
+
+        function zoomIn() { 
+            currentZoom = Math.min(currentZoom + 0.25, 5); 
+            updateImageTransform(); 
+        }
+        
+        function zoomOut() { 
+            currentZoom = Math.max(currentZoom - 0.25, 0.2); 
+            updateImageTransform(); 
+        }
+        
+        function resetZoom() { 
+            currentZoom = 1; 
+            translateX = 0; 
+            translateY = 0; 
+            updateImageTransform(); 
+        }
+
+        // Управление колесиком мыши (Плавный зум)
+        transformContainer.addEventListener('wheel', (e) => {
+            e.preventDefault(); // Останавливаем стандартную прокрутку страницы
+            const zoomDelta = e.deltaY * -0.002;
+            currentZoom = Math.min(Math.max(0.2, currentZoom + zoomDelta), 10);
+            updateImageTransform();
+        });
+
+        // Управление перетаскиванием (Pan)
+        transformContainer.addEventListener('mousedown', (e) => {
+            // Если кликнули на кнопку, игнорируем перетаскивание
+            if (e.target.closest('button') || e.target.closest('a')) return;
+            
+            isDragging = true;
+            startX = e.clientX - translateX;
+            startY = e.clientY - translateY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            translateX = e.clientX - startX;
+            translateY = e.clientY - startY;
+            updateImageTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+        
+        // Предотвращение показа контекстного меню при перетаскивании
+        transformContainer.addEventListener('contextmenu', e => e.preventDefault());
+
 
         generatedImage.addEventListener('mouseenter', () => zoomHint.classList.remove('hidden'));
         generatedImage.addEventListener('mouseleave', () => zoomHint.classList.add('hidden'));
