@@ -157,6 +157,10 @@
         
         <div class="absolute top-0 inset-x-0 p-4 md:p-6 flex justify-between items-start z-50 pointer-events-none">
             <div class="flex gap-2 bg-white/10 p-1.5 md:p-2 rounded-2xl backdrop-blur-lg pointer-events-auto border border-white/10 shadow-2xl">
+                <button onclick="toggleFullScreenGenerator()" class="text-white hover:text-purple-400 p-2 hover:bg-white/20 rounded-xl transition-colors" title="На весь экран">
+                    <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                </button>
+                <div class="w-px h-auto bg-white/20 mx-1"></div>
                 <button onclick="zoomOut()" class="text-white hover:text-purple-400 p-2 hover:bg-white/20 rounded-xl transition-colors" title="Уменьшить">
                     <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path></svg>
                 </button>
@@ -393,6 +397,23 @@
         let lastServerStatus = '';
         let isInitDownloadStarting = false;
         let currentModelsStr = '';
+
+        // ПОДХВАТ ПАРАМЕТРОВ ИЗ URL
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('prompt')) promptInput.value = urlParams.get('prompt');
+            if (urlParams.has('negative')) negativeInput.value = urlParams.get('negative');
+            if (urlParams.has('style')) document.getElementById('styleSelect').value = urlParams.get('style');
+            if (urlParams.has('steps')) {
+                stepsInput.value = urlParams.get('steps');
+                document.getElementById('stepsValue').innerText = urlParams.get('steps');
+                toggleAdvancedSettings(); // Раскрываем настройки, если они были заданы
+            }
+            if (urlParams.has('cfg')) {
+                cfgInput.value = urlParams.get('cfg');
+                document.getElementById('cfgValue').innerText = urlParams.get('cfg');
+            }
+        });
 
         function toggleAdvancedSettings() {
             const container = document.getElementById('advancedSettingsContainer');
@@ -657,7 +678,7 @@
             }
         }
 
-        // --- ДЕТАЛЬНЫЙ ПРОСМОТР ИЗОБРАЖЕНИЯ (С ЗУМОМ И ПЕРЕТАСКИВАНИЕМ) ---
+        // --- ДЕТАЛЬНЫЙ ПРОСМОТР ИЗОБРАЖЕНИЯ (С ЗУМОМ, ПЕРЕТАСКИВАНИЕМ И FULLSCREEN) ---
         const viewerModal = document.getElementById('imageViewerModal');
         const fullSizeImage = document.getElementById('fullSizeImage');
         const downloadImageBtn = document.getElementById('downloadImageBtn');
@@ -679,6 +700,19 @@
 
         function closeImageViewer() {
             viewerModal.classList.add('hidden');
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        }
+
+        function toggleFullScreenGenerator() {
+            if (!document.fullscreenElement) {
+                fullSizeImage.requestFullscreen().catch(err => {
+                    alert(`Ошибка полноэкранного режима: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
         }
 
         function updateImageTransform() {
@@ -730,7 +764,6 @@
         });
         
         transformContainer.addEventListener('contextmenu', e => e.preventDefault());
-
 
         generatedImage.addEventListener('mouseenter', () => zoomHint.classList.remove('hidden'));
         generatedImage.addEventListener('mouseleave', () => zoomHint.classList.add('hidden'));
