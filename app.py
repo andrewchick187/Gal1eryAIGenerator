@@ -28,6 +28,9 @@ static_img_dir = os.path.join(app.static_folder, IMAGE_FOLDER)
 os.makedirs(static_img_dir, exist_ok=True)
 os.makedirs(MODELS_FOLDER, exist_ok=True)
 
+# Файл для хранения промптов и настроек сгенерированных изображений
+IMAGES_META_FILE = os.path.join(static_img_dir, 'images_meta.json')
+
 # Глобальные переменные состояния
 pipe = None
 current_model_name = None
@@ -41,6 +44,19 @@ model_state = {
 downloads_state = {}
 
 # --- ФУНКЦИИ МОДЕЛЕЙ И ЗАГРУЗКИ ---
+
+def load_image_meta():
+    if os.path.exists(IMAGES_META_FILE):
+        try:
+            with open(IMAGES_META_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def save_image_meta(meta):
+    with open(IMAGES_META_FILE, 'w', encoding='utf-8') as f:
+        json.dump(meta, f, ensure_ascii=False, indent=4)
 
 def save_model_meta(filename, model_type):
     if model_type == 'auto': return
@@ -179,7 +195,6 @@ def load_model_into_vram(filename):
             is_probably_sdxl = file_size > 4.5 * 1024 * 1024 * 1024 and not is_probably_sd3
 
         def try_load_sd3():
-            # Попытка 1: С явным конфигом SD 3.5
             try:
                 print("Пробуем загрузить как SD 3.5 Medium (с конфигом)...")
                 return StableDiffusion3Pipeline.from_single_file(
@@ -190,7 +205,6 @@ def load_model_into_vram(filename):
                 ), "SD 3.5"
             except Exception as e1:
                 print(f"Загрузка с конфигом 3.5 не удалась ({e1}). Пробуем стандартный метод...")
-                # Попытка 2: Без явного конфига (автоопределение)
                 return StableDiffusion3Pipeline.from_single_file(
                     filepath,
                     torch_dtype=dtype,
@@ -241,18 +255,16 @@ def load_model_into_vram(filename):
                 temp_pipe, loaded_type = attempt_func()
                 break
             except Exception as e:
-                error_str = str(e).split('\n')[0] # Берем только первую строчку ошибки для компактности
+                error_str = str(e).split('\n')[0]
                 error_logs.append(f"{attempt_func.__name__}: {error_str}")
                 print(f"Не удалось загрузить через {attempt_func.__name__}: {e}")
                 continue
 
         if temp_pipe is None:
-            # Улучшенная диагностика ошибок для пользователя
             filename_lower = filename.lower()
             if "fp8" in filename_lower or "scaled" in filename_lower:
                 raise Exception("Это FP8-модель формата ComfyUI. Текущая библиотека не поддерживает этот специфичный формат. Скачайте официальную стандартную версию (FP16).")
             else:
-                # Показываем реальную системную ошибку
                 raise Exception(f"Архитектура не распознана. Ошибка: {error_logs[0][:150]}...")
 
         if "SD 3" not in loaded_type:
@@ -293,19 +305,27 @@ def allowed_file(filename):
 @app.route('/')
 def gallery():
     image_dir = os.path.join(app.static_folder, IMAGE_FOLDER)
+    meta = load_image_meta()
     images = []
+    
     if os.path.exists(image_dir):
         files = os.listdir(image_dir)
         for f in files:
             filepath = os.path.join(image_dir, f)
             if os.path.isfile(filepath) and allowed_file(f):
                 stats = os.stat(filepath)
+                img_data = meta.get(f, {})
                 images.append({
                     'name': f,
                     'url': f"{IMAGE_FOLDER}/{f}",
                     'size': f"{stats.st_size / 1024:.1f} KB",
                     'date': datetime.datetime.fromtimestamp(stats.st_mtime).strftime("%d.%m.%Y %H:%M"),
-                    'timestamp': stats.st_mtime
+                    'timestamp': stats.st_mtime,
+                    'prompt': img_data.get('prompt', 'Промпт не сохранен (старое изображение)'),
+                    'negative_prompt': img_data.get('negative_prompt', ''),
+                    'style': img_data.get('style', 'Неизвестно'),
+                    'steps': img_data.get('steps', '-'),
+                    'guidance_scale': img_data.get('guidance_scale', '-')
                 })
     images.sort(key=lambda x: x['timestamp'], reverse=True)
     return render_template('index.html', images=images)
@@ -321,6 +341,22 @@ def get_status():
         'current_model': current_model_name,
         'current_model_type': current_model_type
     })
+
+# --- РОУТ УДАЛЕНИЯ ---
+@app.route('/delete_image/<filename>', methods=['POST'])
+def delete_image(filename):
+    file_path = os.path.join(app.static_folder, IMAGE_FOLDER, filename)
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+            meta = load_image_meta()
+            if filename in meta:
+                del meta[filename]
+                save_image_meta(meta)
+            return jsonify({'success': True})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+    return jsonify({'success': False, 'error': 'Файл не найден'}), 404
 
 # --- API МЕНЕДЖЕРА МОДЕЛЕЙ ---
 @app.route('/api/models', methods=['GET'])
@@ -430,6 +466,19 @@ def generate_art():
         filename = f"gen_{timestamp}.png"
         file_path = os.path.join(app.static_folder, IMAGE_FOLDER, filename)
         image.save(file_path)
+
+        # Сохраняем метаданные (промпты и настройки)
+        meta = load_image_meta()
+        meta[filename] = {
+            'prompt': user_prompt,
+            'negative_prompt': user_negative,
+            'ratio': ratio,
+            'style': style,
+            'steps': steps,
+            'guidance_scale': guidance_scale,
+            'seed': seed
+        }
+        save_image_meta(meta)
 
         return jsonify({'success': True, 'url': url_for('static', filename=f"{IMAGE_FOLDER}/{filename}")})
     
