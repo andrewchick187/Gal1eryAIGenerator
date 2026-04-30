@@ -170,15 +170,28 @@
                         </div>
 
                         <div class="pt-6 mt-auto">
-                            <div class="flex gap-2">
-                                <a id="downloadLink" href="#" download class="flex-1 flex items-center justify-center py-3 px-4 rounded-2xl shadow-lg text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all gap-2 transform hover:-translate-y-0.5">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                    Оригинал
-                                </a>
-                                
-                                <button onclick="deleteCurrentImage()" title="Удалить навсегда" class="flex-none flex items-center justify-center py-3 px-4 rounded-2xl shadow-lg text-white bg-red-600 hover:bg-red-500 transition-all transform hover:-translate-y-0.5">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            <div class="flex flex-col gap-3">
+                                <!-- Кнопка регенерации -->
+                                <button onclick="regenerateImage()" class="w-full flex items-center justify-center py-3 px-4 rounded-2xl shadow-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-500 transition-all gap-2 transform hover:-translate-y-0.5">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                    Повторить генерацию
                                 </button>
+                                
+                                <div class="flex gap-2">
+                                    <!-- Кнопка во весь экран -->
+                                    <button onclick="toggleFullScreenIndex()" title="Во весь экран" class="flex-none flex items-center justify-center py-3 px-4 rounded-2xl shadow-lg text-white bg-gray-600 hover:bg-gray-500 transition-all transform hover:-translate-y-0.5">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                                    </button>
+
+                                    <a id="downloadLink" href="#" download class="flex-1 flex items-center justify-center py-3 px-4 rounded-2xl shadow-lg text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all gap-2 transform hover:-translate-y-0.5">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                        Оригинал
+                                    </a>
+                                    
+                                    <button onclick="deleteCurrentImage()" title="Удалить навсегда" class="flex-none flex items-center justify-center py-3 px-4 rounded-2xl shadow-lg text-white bg-red-600 hover:bg-red-500 transition-all transform hover:-translate-y-0.5">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -227,6 +240,35 @@
                 modalImg.src = '';
                 document.body.style.overflow = 'auto';
             }, 500);
+            
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        }
+
+        function toggleFullScreenIndex() {
+            if (!document.fullscreenElement) {
+                modalImg.requestFullscreen().catch(err => {
+                    alert(`Ошибка полноэкранного режима: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function regenerateImage() {
+            const imgData = images[currentIndex];
+            const params = new URLSearchParams();
+            
+            if (imgData.prompt && imgData.prompt !== 'Промпт не сохранен (старое изображение)') {
+                params.append('prompt', imgData.prompt);
+            }
+            if (imgData.negative_prompt) params.append('negative', imgData.negative_prompt);
+            if (imgData.style && imgData.style !== 'Неизвестно') params.append('style', imgData.style);
+            if (imgData.steps && imgData.steps !== '-') params.append('steps', imgData.steps);
+            if (imgData.guidance_scale && imgData.guidance_scale !== '-') params.append('cfg', imgData.guidance_scale);
+            
+            window.location.href = `/generator?${params.toString()}`;
         }
 
         function updateModalContent() {
