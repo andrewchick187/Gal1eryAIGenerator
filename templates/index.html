@@ -83,9 +83,12 @@
                 onclick="openModal({{ loop.index0 }})"
             >
                 <img src="{{ url_for('static', filename=img.url) }}" alt="{{ img.name }}" loading="lazy" class="w-full h-full object-cover transform transition duration-700 group-hover:scale-105">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                    <p class="text-white text-xs font-semibold truncate">{{ img.name }}</p>
-                    <p class="text-white/70 text-[10px]">{{ img.date }}</p>
+                <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                    <p class="text-white text-xs font-semibold line-clamp-3 mb-1">{{ img.prompt }}</p>
+                    <div class="flex justify-between items-center w-full">
+                        <p class="text-white/70 text-[10px]">{{ img.date }}</p>
+                        <p class="text-white/70 text-[10px] bg-white/20 px-1.5 py-0.5 rounded">{{ img.style }}</p>
+                    </div>
                 </div>
             </div>
             {% else %}
@@ -103,7 +106,7 @@
     <div id="imageModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
         <div class="absolute inset-0 bg-black/60 backdrop-blur-xl transition-opacity opacity-0" id="modalBackdrop"></div>
         <div class="absolute inset-0 flex items-center justify-center p-4 sm:p-8" id="modalWrapper">
-            <div id="modalContent" class="relative glass-panel w-full max-w-5xl h-[85vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row transform scale-95 opacity-0 transition-all duration-500 border border-white/20">
+            <div id="modalContent" class="relative glass-panel w-full max-w-6xl h-[85vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row transform scale-95 opacity-0 transition-all duration-500 border border-white/20">
                 
                 <button onclick="closeModal()" class="absolute top-6 right-6 z-30 text-white hover:text-white bg-black/30 hover:bg-black/60 rounded-full p-2.5 backdrop-blur-md transition-all hover:rotate-90">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -119,31 +122,64 @@
                     </button>
                 </div>
 
-                <div class="w-full md:w-80 lg:w-96 bg-white/50 dark:bg-black/50 backdrop-blur-3xl border-l border-white/20 dark:border-white/5 flex flex-col z-10">
-                    <div class="p-8 border-b border-white/20 dark:border-white/5">
-                        <h2 class="text-2xl font-bold mb-1">Детали</h2>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Информация о файле</p>
-                    </div>
-                    <div class="p-8 flex-1 overflow-y-auto space-y-6">
+                <div class="w-full md:w-80 lg:w-[400px] bg-white/50 dark:bg-black/50 backdrop-blur-3xl border-l border-white/20 dark:border-white/5 flex flex-col z-10">
+                    <div class="p-6 border-b border-white/20 dark:border-white/5 flex justify-between items-center">
                         <div>
-                            <p class="text-xs uppercase tracking-widest text-gray-500 font-bold mb-2">Название</p>
-                            <p id="modalTitle" class="text-sm font-medium break-all"></p>
+                            <h2 class="text-xl font-bold mb-1">Детали</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Настройки генерации</p>
                         </div>
-                        <div class="grid grid-cols-2 gap-6">
+                    </div>
+                    
+                    <div class="p-6 flex-1 overflow-y-auto space-y-5">
+                        
+                        <!-- Промпт -->
+                        <div>
+                            <p class="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-2">Промпт</p>
+                            <div class="bg-white/40 dark:bg-black/30 p-3 rounded-xl border border-white/40 dark:border-gray-700/50 max-h-32 overflow-y-auto shadow-inner">
+                                <p id="modalPrompt" class="text-sm font-medium text-gray-800 dark:text-gray-200 break-words"></p>
+                            </div>
+                        </div>
+
+                        <!-- Негативный Промпт -->
+                        <div id="modalNegativeBlock">
+                            <p class="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-2">Негативный промпт</p>
+                            <div class="bg-white/40 dark:bg-black/30 p-3 rounded-xl border border-white/40 dark:border-gray-700/50 max-h-24 overflow-y-auto shadow-inner">
+                                <p id="modalNegative" class="text-xs font-medium text-gray-600 dark:text-gray-400 break-words"></p>
+                            </div>
+                        </div>
+                        
+                        <hr class="border-gray-300 dark:border-gray-700">
+
+                        <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <p class="text-xs uppercase tracking-widest text-gray-500 font-bold mb-2">Создано</p>
+                                <p class="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Стиль</p>
+                                <p id="modalStyle" class="text-sm font-bold text-purple-600 dark:text-purple-400"></p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Создано</p>
                                 <p id="modalDate" class="text-sm font-medium"></p>
                             </div>
                             <div>
-                                <p class="text-xs uppercase tracking-widest text-gray-500 font-bold mb-2">Вес</p>
-                                <p id="modalSize" class="text-sm font-medium"></p>
+                                <p class="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Шаги (Steps)</p>
+                                <p id="modalSteps" class="text-sm font-medium"></p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">CFG Scale</p>
+                                <p id="modalGuidance" class="text-sm font-medium"></p>
                             </div>
                         </div>
-                        <div class="pt-6">
-                            <a id="downloadLink" href="#" download class="flex items-center justify-center w-full py-3.5 px-4 rounded-2xl shadow-lg text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all gap-2 transform hover:-translate-y-0.5">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                Сохранить оригинал
-                            </a>
+
+                        <div class="pt-6 mt-auto">
+                            <div class="flex gap-2">
+                                <a id="downloadLink" href="#" download class="flex-1 flex items-center justify-center py-3 px-4 rounded-2xl shadow-lg text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all gap-2 transform hover:-translate-y-0.5">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                    Оригинал
+                                </a>
+                                
+                                <button onclick="deleteCurrentImage()" title="Удалить навсегда" class="flex-none flex items-center justify-center py-3 px-4 rounded-2xl shadow-lg text-white bg-red-600 hover:bg-red-500 transition-all transform hover:-translate-y-0.5">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -159,9 +195,15 @@
         const modalContent = document.getElementById('modalContent');
         const backdrop = document.getElementById('modalBackdrop');
         const modalImg = document.getElementById('modalImage');
-        const modalTitle = document.getElementById('modalTitle');
+        
+        const modalPrompt = document.getElementById('modalPrompt');
+        const modalNegative = document.getElementById('modalNegative');
+        const modalNegativeBlock = document.getElementById('modalNegativeBlock');
+        const modalStyle = document.getElementById('modalStyle');
+        const modalSteps = document.getElementById('modalSteps');
+        const modalGuidance = document.getElementById('modalGuidance');
         const modalDate = document.getElementById('modalDate');
-        const modalSize = document.getElementById('modalSize');
+        
         const downloadLink = document.getElementById('downloadLink');
 
         function openModal(index) {
@@ -192,11 +234,44 @@
             const imgData = images[currentIndex];
             modalImg.style.opacity = '0';
             setTimeout(() => modalImg.style.opacity = '1', 50);
+            
             modalImg.src = "/static/" + imgData.url;
-            modalTitle.textContent = imgData.name;
+            
+            modalPrompt.textContent = imgData.prompt;
+            
+            if(imgData.negative_prompt) {
+                modalNegative.textContent = imgData.negative_prompt;
+                modalNegativeBlock.classList.remove('hidden');
+            } else {
+                modalNegativeBlock.classList.add('hidden');
+            }
+            
+            modalStyle.textContent = imgData.style;
+            modalSteps.textContent = imgData.steps;
+            modalGuidance.textContent = imgData.guidance_scale;
             modalDate.textContent = imgData.date;
-            modalSize.textContent = imgData.size;
+            
             downloadLink.href = "/static/" + imgData.url;
+        }
+
+        async function deleteCurrentImage() {
+            if(!confirm('Вы уверены, что хотите навсегда удалить это изображение?')) return;
+            
+            const imgData = images[currentIndex];
+            try {
+                const response = await fetch('/delete_image/' + encodeURIComponent(imgData.name), {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Ошибка при удалении: ' + data.error);
+                }
+            } catch (err) {
+                alert('Сетевая ошибка при попытке удаления.');
+            }
         }
 
         function nextImage(e) { if(e) e.stopPropagation(); currentIndex = (currentIndex + 1) % images.length; updateModalContent(); }
